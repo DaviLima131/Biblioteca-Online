@@ -1,3 +1,4 @@
+
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
@@ -75,7 +76,9 @@ function createDemoPixPayload(amount: number) {
   const merchantAccount =
     pixField('00', 'BR.GOV.BCB.PIX') +
     pixField('01', 'demo@bibliotecaonline.invalid');
+
   const additionalData = pixField('05', 'DEMO');
+
   const data =
     pixField('00', '01') +
     pixField('01', '11') +
@@ -87,6 +90,7 @@ function createDemoPixPayload(amount: number) {
     pixField('59', 'BIBLIOTECA ONLINE DEMO') +
     pixField('60', 'SAO PAULO') +
     pixField('62', additionalData);
+
   const crcInput = `${data}6304`;
   let crc = 0xffff;
 
@@ -115,18 +119,22 @@ export default function CheckoutScreen({
 }: Props) {
   const [selectedMethod, setSelectedMethod] =
     useState<PaymentMethod | null>(null);
+
   const [cardholder, setCardholder] = useState('');
   const [cardNumber, setCardNumber] = useState('');
   const [expiration, setExpiration] = useState('');
   const [securityCode, setSecurityCode] = useState('');
   const [error, setError] = useState('');
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+
   const total = cart.reduce(
     (sum, item) => sum + item.book.price * item.quantity,
     0
   );
+
   const pixPayload = createDemoPixPayload(total);
 
+  // CONFIRMAR PEDIDO
   const handleConfirm = () => {
     if (!selectedMethod) {
       return;
@@ -135,17 +143,30 @@ export default function CheckoutScreen({
     if (selectedMethod !== 'Pix') {
       const month = Number(expiration.slice(0, 2));
       const cardDigits = cardNumber.replace(/\D/g, '');
-      const codeIsValid = /^\d{3,4}$/.test(securityCode);
+      const invalidFields: string[] = [];
+
+      if (!cardholder.trim()) {
+        invalidFields.push('nome');
+      }
+
+      if (cardDigits.length !== 16) {
+        invalidFields.push('número do cartão (16 dígitos)');
+      }
 
       if (
-        !cardholder.trim() ||
-        cardDigits.length !== 16 ||
         !/^\d{2}\/\d{2}$/.test(expiration) ||
         month < 1 ||
-        month > 12 ||
-        !codeIsValid
+        month > 12
       ) {
-        setError('Confira os dados do cartão para continuar.');
+        invalidFields.push('validade (MM/AA, mês de 01 a 12)');
+      }
+
+      if (!/^\d{3,4}$/.test(securityCode)) {
+        invalidFields.push('CVV (3 ou 4 dígitos)');
+      }
+
+      if (invalidFields.length > 0) {
+        setError(`Confira: ${invalidFields.join(', ')}.`);
         return;
       }
     }
@@ -161,11 +182,13 @@ export default function CheckoutScreen({
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
+
       <ScrollView
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={styles.content}
       >
+        {/* CABEÇALHO */}
         <View style={styles.header}>
           <Pressable
             onPress={onBack}
@@ -175,18 +198,29 @@ export default function CheckoutScreen({
           >
             <Text style={styles.backText}>‹</Text>
           </Pressable>
+
           <Text style={styles.headerTitle}>Pagamento</Text>
+
           <View style={styles.headerSpacer} />
         </View>
 
         {orderConfirmed ? (
-          <View style={styles.confirmationCard} accessibilityRole="summary">
+          // CONFIRMAÇÃO
+          <View
+            style={styles.confirmationCard}
+            accessibilityRole="summary"
+          >
             <Text style={styles.confirmationEmoji}>✓</Text>
-            <Text style={styles.confirmationTitle}>Pedido registrado!</Text>
+
+            <Text style={styles.confirmationTitle}>
+              Pedido registrado!
+            </Text>
+
             <Text style={styles.confirmationText}>
               Forma escolhida: {selectedMethod}. Esta é uma confirmação
               demonstrativa. Nenhum pagamento foi realizado.
             </Text>
+
             <Pressable
               onPress={onComplete}
               style={styles.primaryButton}
@@ -199,26 +233,42 @@ export default function CheckoutScreen({
           </View>
         ) : (
           <>
+            {/* RESUMO DO PEDIDO */}
             <View style={styles.summaryCard}>
-              <Text style={styles.summaryLabel}>Resumo do pedido</Text>
+              <Text style={styles.summaryLabel}>
+                Resumo do pedido
+              </Text>
+
               {cart.map(({ book, quantity }) => (
                 <View key={book.id} style={styles.summaryLine}>
-                  <Text style={styles.summaryItem} numberOfLines={1}>
+                  <Text
+                    style={styles.summaryItem}
+                    numberOfLines={1}
+                  >
                     {book.title} × {quantity}
                   </Text>
+
                   <Text style={styles.summaryPrice}>
                     {formatPrice(book.price * quantity)}
                   </Text>
                 </View>
               ))}
+
               <View style={styles.summaryDivider} />
+
               <View style={styles.summaryLine}>
                 <Text style={styles.totalLabel}>Total</Text>
-                <Text style={styles.total}>{formatPrice(total)}</Text>
+                <Text style={styles.total}>
+                  {formatPrice(total)}
+                </Text>
               </View>
             </View>
 
-            <Text style={styles.sectionTitle}>Forma de pagamento</Text>
+            {/* FORMAS DE PAGAMENTO */}
+            <Text style={styles.sectionTitle}>
+              Forma de pagamento
+            </Text>
+
             <Text style={styles.description}>
               Selecione uma opção para ver os dados de pagamento.
             </Text>
@@ -242,31 +292,42 @@ export default function CheckoutScreen({
                   accessibilityLabel={`Selecionar ${method}`}
                 >
                   <View>
-                    <Text style={styles.paymentTitle}>{method}</Text>
+                    <Text style={styles.paymentTitle}>
+                      {method}
+                    </Text>
+
                     <Text style={styles.paymentDescription}>
                       {method === 'Pix'
                         ? 'QR Code demonstrativo'
                         : 'Dados do cartão demonstrativos'}
                     </Text>
                   </View>
+
                   <View
                     style={[
                       styles.radioOuter,
                       isSelected && styles.radioOuterSelected,
                     ]}
                   >
-                    {isSelected && <View style={styles.radioInner} />}
+                    {isSelected && (
+                      <View style={styles.radioInner} />
+                    )}
                   </View>
                 </Pressable>
               );
             })}
 
+            {/* PIX */}
             {selectedMethod === 'Pix' && (
               <View style={styles.paymentDetails}>
-                <Text style={styles.detailsTitle}>Pague com Pix</Text>
+                <Text style={styles.detailsTitle}>
+                  Pague com Pix
+                </Text>
+
                 <Text style={styles.detailsDescription}>
                   Escaneie o QR Code demonstrativo abaixo.
                 </Text>
+
                 <View style={styles.qrContainer}>
                   <QRCode
                     value={pixPayload}
@@ -276,22 +337,27 @@ export default function CheckoutScreen({
                     ecl="M"
                   />
                 </View>
+
                 <Text style={styles.qrDisclaimer}>
-                  QR Code de exemplo, não pagável. Para receber pagamentos,
-                  conecte uma chave Pix válida a um provedor de pagamentos.
+                  QR Code de exemplo, não pagável. Para receber
+                  pagamentos, conecte uma chave Pix válida a um
+                  provedor de pagamentos.
                 </Text>
               </View>
             )}
 
+            {/* CARTÃO */}
             {(selectedMethod === 'Cartão de débito' ||
               selectedMethod === 'Cartão de crédito') && (
               <View style={styles.paymentDetails}>
                 <Text style={styles.detailsTitle}>
                   Dados do {selectedMethod.toLowerCase()}
                 </Text>
+
                 <Text style={styles.detailsDescription}>
-                  Use apenas dados fictícios nesta demonstração.
+                  Preencha os dados do cartão para continuar.
                 </Text>
+
                 <InputField
                   label="Nome no cartão"
                   value={cardholder}
@@ -299,23 +365,30 @@ export default function CheckoutScreen({
                   placeholder="Como aparece no cartão"
                   autoCapitalize="words"
                 />
+
                 <InputField
                   label="Número do cartão"
                   value={formatCardNumber(cardNumber)}
                   onChangeText={(value) =>
-                    setCardNumber(value.replace(/\D/g, '').slice(0, 16))
+                    setCardNumber(
+                      value.replace(/\D/g, '').slice(0, 16)
+                    )
                   }
                   placeholder="0000 0000 0000 0000"
                   keyboardType="number-pad"
                   maxLength={19}
                 />
+
                 <View style={styles.cardRow}>
                   <View style={styles.cardRowField}>
                     <InputField
                       label="Validade"
                       value={expiration}
                       onChangeText={(value) => {
-                        const digits = value.replace(/\D/g, '').slice(0, 4);
+                        const digits = value
+                          .replace(/\D/g, '')
+                          .slice(0, 4);
+
                         setExpiration(
                           digits.length > 2
                             ? `${digits.slice(0, 2)}/${digits.slice(2)}`
@@ -327,12 +400,15 @@ export default function CheckoutScreen({
                       maxLength={5}
                     />
                   </View>
+
                   <View style={styles.cardRowField}>
                     <InputField
                       label="CVV"
                       value={securityCode}
                       onChangeText={(value) =>
-                        setSecurityCode(value.replace(/\D/g, '').slice(0, 4))
+                        setSecurityCode(
+                          value.replace(/\D/g, '').slice(0, 4)
+                        )
                       }
                       placeholder="123"
                       keyboardType="number-pad"
@@ -341,15 +417,20 @@ export default function CheckoutScreen({
                     />
                   </View>
                 </View>
+
                 <Text style={styles.cardDisclaimer}>
-                  Os dados são usados somente nesta tela e apagados ao
-                  confirmar. Nenhuma cobrança será feita.
+                  Os dados são usados somente nesta tela e apagados
+                  ao confirmar. Nenhuma cobrança será feita.
                 </Text>
               </View>
             )}
 
-            {error ? <Text style={styles.errorText}>{error}</Text> : null}
+            {/* ERROS */}
+            {error ? (
+              <Text style={styles.errorText}>{error}</Text>
+            ) : null}
 
+            {/* BOTÃO CONFIRMAR */}
             <Pressable
               onPress={handleConfirm}
               disabled={!selectedMethod}
@@ -363,12 +444,14 @@ export default function CheckoutScreen({
             >
               <Text style={styles.primaryButtonText}>
                 {selectedMethod
-                  ? 'Confirmar pedido demonstrativo'
+                  ? 'Confirmar pedido'
                   : 'Escolha uma forma de pagamento'}
               </Text>
             </Pressable>
+
             <Text style={styles.footerNote}>
-              Ambiente de demonstração: nenhum dado será enviado ou cobrado.
+              Ambiente de demonstração: nenhum dado será enviado
+              ou cobrado.
             </Text>
           </>
         )}
@@ -377,22 +460,26 @@ export default function CheckoutScreen({
   );
 }
 
+// ESTILOS
 const styles = StyleSheet.create({
   screen: {
     flex: 1,
     backgroundColor: '#FFF9E9',
   },
+
   content: {
     padding: 22,
     paddingTop: 48,
     paddingBottom: 36,
   },
+
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: 24,
   },
+
   backButton: {
     width: 43,
     height: 43,
@@ -403,20 +490,24 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   backText: {
     color: '#29271F',
     fontSize: 34,
     lineHeight: 38,
     marginTop: -4,
   },
+
   headerTitle: {
     color: '#29271F',
     fontSize: 18,
     fontWeight: '800',
   },
+
   headerSpacer: {
     width: 43,
   },
+
   summaryCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
@@ -425,48 +516,57 @@ const styles = StyleSheet.create({
     padding: 17,
     marginBottom: 23,
   },
+
   summaryLabel: {
     color: '#817D72',
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 10,
   },
+
   summaryLine: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: 7,
   },
+
   summaryItem: {
     color: '#625D51',
     fontSize: 12,
     flex: 1,
     marginRight: 10,
   },
+
   summaryPrice: {
     color: '#625D51',
     fontSize: 12,
   },
+
   summaryDivider: {
     height: 1,
     backgroundColor: '#EEE8DA',
     marginTop: 13,
   },
+
   totalLabel: {
     color: '#29271F',
     fontSize: 14,
     fontWeight: '800',
   },
+
   total: {
     color: '#29271F',
     fontSize: 18,
     fontWeight: '900',
   },
+
   sectionTitle: {
     color: '#29271F',
     fontSize: 18,
     fontWeight: '800',
   },
+
   description: {
     color: '#817D72',
     fontSize: 12,
@@ -474,6 +574,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 12,
   },
+
   paymentOption: {
     minHeight: 65,
     flexDirection: 'row',
@@ -487,20 +588,24 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     marginBottom: 8,
   },
+
   paymentOptionSelected: {
     borderColor: '#98771D',
     backgroundColor: '#FFFCF2',
   },
+
   paymentTitle: {
     color: '#29271F',
     fontSize: 14,
     fontWeight: '700',
   },
+
   paymentDescription: {
     color: '#817D72',
     fontSize: 11,
     marginTop: 4,
   },
+
   radioOuter: {
     width: 21,
     height: 21,
@@ -510,15 +615,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+
   radioOuterSelected: {
     borderColor: '#98771D',
   },
+
   radioInner: {
     width: 11,
     height: 11,
     borderRadius: 6,
     backgroundColor: '#98771D',
   },
+
   paymentDetails: {
     backgroundColor: '#FFFCF5',
     borderWidth: 1,
@@ -528,11 +636,13 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 16,
   },
+
   detailsTitle: {
     color: '#29271F',
     fontSize: 16,
     fontWeight: '800',
   },
+
   detailsDescription: {
     color: '#817D72',
     fontSize: 12,
@@ -540,6 +650,7 @@ const styles = StyleSheet.create({
     marginTop: 5,
     marginBottom: 15,
   },
+
   qrContainer: {
     alignSelf: 'center',
     backgroundColor: '#FFFFFF',
@@ -547,6 +658,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginVertical: 7,
   },
+
   qrDisclaimer: {
     color: '#817D72',
     fontSize: 11,
@@ -554,15 +666,18 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 9,
   },
+
   fieldGroup: {
     marginBottom: 13,
   },
+
   fieldLabel: {
     color: '#625D51',
     fontSize: 12,
     fontWeight: '700',
     marginBottom: 6,
   },
+
   input: {
     minHeight: 48,
     backgroundColor: '#FFFFFF',
@@ -573,25 +688,30 @@ const styles = StyleSheet.create({
     color: '#29271F',
     fontSize: 14,
   },
+
   cardRow: {
     flexDirection: 'row',
     gap: 12,
   },
+
   cardRowField: {
     flex: 1,
   },
+
   cardDisclaimer: {
     color: '#817D72',
     fontSize: 11,
     lineHeight: 17,
     marginTop: 1,
   },
+
   errorText: {
     color: '#A73E32',
     fontSize: 12,
     lineHeight: 18,
     marginBottom: 10,
   },
+
   primaryButton: {
     minHeight: 54,
     borderRadius: 15,
@@ -601,15 +721,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     marginTop: 8,
   },
+
   primaryButtonDisabled: {
     backgroundColor: '#E8E2D4',
   },
+
   primaryButtonText: {
     color: '#29271F',
     fontSize: 14,
     fontWeight: '900',
     textAlign: 'center',
   },
+
   footerNote: {
     color: '#938B7A',
     fontSize: 11,
@@ -617,6 +740,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 12,
   },
+
   confirmationCard: {
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
@@ -626,6 +750,7 @@ const styles = StyleSheet.create({
     padding: 23,
     marginTop: 28,
   },
+
   confirmationEmoji: {
     width: 48,
     height: 48,
@@ -638,12 +763,14 @@ const styles = StyleSheet.create({
     lineHeight: 48,
     textAlign: 'center',
   },
+
   confirmationTitle: {
     color: '#29271F',
     fontSize: 20,
     fontWeight: '900',
     marginTop: 13,
   },
+
   confirmationText: {
     color: '#696456',
     fontSize: 13,
@@ -652,6 +779,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     marginBottom: 13,
   },
+
   pressed: {
     opacity: 0.8,
   },

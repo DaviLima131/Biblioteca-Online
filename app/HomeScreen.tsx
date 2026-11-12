@@ -74,9 +74,7 @@ export default function HomeScreen({
               accessible
               accessibilityLabel="Logo da Biblioteca Online"
             />
-            <Text style={styles.tagline}>
-              histórias que aproximam
-            </Text>
+          
           </View>
 
           <View style={styles.headerActions}>
@@ -211,7 +209,7 @@ export default function HomeScreen({
                     <Image
                       source={{ uri: book.imageUri }}
                       style={styles.bookCoverImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                       accessibilityLabel={`Capa de ${book.title}`}
                     />
                   ) : (
@@ -529,6 +527,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF0C4',
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   bookEmoji: {
     fontSize: 36,
@@ -540,6 +539,7 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     borderRadius: 11,
+    backgroundColor: '#FFFFFF',
   },
   bookInfo: {
     flex: 1,

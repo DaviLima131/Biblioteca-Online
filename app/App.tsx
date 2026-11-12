@@ -1,21 +1,23 @@
 
 import { useState } from 'react';
 import { Alert } from 'react-native';
+
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import HomeScreen from './HomeScreen';
 import BookDetailScreen from './BookDetailScreen';
 import AdminBookScreen from './AdminBookScreen';
+import CartScreen from './CartScreen';
+import CheckoutScreen from './CheckoutScreen';
+
 import {
   books as initialBooks,
   type Book,
   type CartItem,
   type NewBook,
 } from './books';
+
 import type { AppScreenName, AuthScreenName } from './types';
-import CartScreen from './CartScreen';
-import CheckoutScreen from './CheckoutScreen';
-import './LoginScreen';
 
 const DEMO_ADMIN_NAME = 'admin';
 const DEMO_ADMIN_PASSWORD = 'admin123';
@@ -35,6 +37,7 @@ export default function App() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
 
+  // CADASTRO
   const handleRegister = (name: string, password: string) => {
     const normalizedName = name.trim();
 
@@ -72,6 +75,7 @@ export default function App() {
     setScreen('home');
   };
 
+  // LOGIN
   const handleLogin = (name: string, password: string) => {
     const normalizedName = name.trim();
 
@@ -104,6 +108,7 @@ export default function App() {
     setScreen('home');
   };
 
+  // NAVEGAÇÃO
   const handleNavigate = (nextScreen: AuthScreenName) => {
     if (nextScreen === 'login') {
       setUserName('');
@@ -114,14 +119,20 @@ export default function App() {
     setScreen(nextScreen);
   };
 
+  // PUBLICAR OU EDITAR LIVRO
   const handlePublishBook = (newBook: NewBook) => {
     if (editingBook) {
-      const updatedBook: Book = { ...editingBook, ...newBook };
+      const updatedBook: Book = {
+        ...editingBook,
+        ...newBook,
+      };
+
       setCatalog((currentCatalog) =>
         currentCatalog.map((book) =>
           book.id === editingBook.id ? updatedBook : book
         )
       );
+
       setCart((currentCart) =>
         currentCart.map((item) =>
           item.book.id === updatedBook.id
@@ -129,6 +140,7 @@ export default function App() {
             : item
         )
       );
+
       setSelectedBook(updatedBook);
       setEditingBook(null);
       setScreen('bookDetail');
@@ -146,6 +158,7 @@ export default function App() {
     setScreen('home');
   };
 
+  // ADICIONAR AO CARRINHO
   const handleAddToCart = (book: Book) => {
     setCart((currentCart) => {
       const existingItem = currentCart.find(
@@ -162,26 +175,37 @@ export default function App() {
 
       return [...currentCart, { book, quantity: 1 }];
     });
+
     setScreen('cart');
   };
 
-  const handleChangeCartQuantity = (bookId: string, quantity: number) => {
+  // ALTERAR QUANTIDADE DO CARRINHO
+  const handleChangeCartQuantity = (
+    bookId: string,
+    quantity: number
+  ) => {
     setCart((currentCart) =>
       quantity < 1
         ? currentCart.filter((item) => item.book.id !== bookId)
         : currentCart.map((item) =>
-          item.book.id === bookId ? { ...item, quantity } : item
-        )
+            item.book.id === bookId
+              ? { ...item, quantity }
+              : item
+          )
     );
   };
 
+  // TELA INICIAL
   if (screen === 'home') {
     return (
       <HomeScreen
         userName={userName}
         catalog={catalog}
         isAdmin={isAdmin}
-        cartItemCount={cart.reduce((count, item) => count + item.quantity, 0)}
+        cartItemCount={cart.reduce(
+          (count, item) => count + item.quantity,
+          0
+        )}
         onNavigate={handleNavigate}
         onOpenCart={() => setScreen('cart')}
         onSelectBook={(book) => {
@@ -196,6 +220,7 @@ export default function App() {
           setCatalog((currentCatalog) =>
             currentCatalog.filter((book) => book.id !== bookId)
           );
+
           setCart((currentCart) =>
             currentCart.filter((item) => item.book.id !== bookId)
           );
@@ -204,6 +229,7 @@ export default function App() {
     );
   }
 
+  // CARRINHO
   if (screen === 'cart') {
     return (
       <CartScreen
@@ -215,6 +241,7 @@ export default function App() {
     );
   }
 
+  // FINALIZAÇÃO DA COMPRA
   if (screen === 'checkout') {
     return (
       <CheckoutScreen
@@ -228,6 +255,7 @@ export default function App() {
     );
   }
 
+  // ADMINISTRADOR
   if (screen === 'adminBook' && isAdmin) {
     return (
       <AdminBookScreen
@@ -241,6 +269,7 @@ export default function App() {
     );
   }
 
+  // DETALHES DO LIVRO
   if (screen === 'bookDetail' && selectedBook) {
     return (
       <BookDetailScreen
@@ -256,6 +285,7 @@ export default function App() {
     );
   }
 
+  // CADASTRO
   if (screen === 'register') {
     return (
       <RegisterScreen
@@ -265,6 +295,7 @@ export default function App() {
     );
   }
 
+  // LOGIN
   return (
     <LoginScreen
       onNavigate={handleNavigate}

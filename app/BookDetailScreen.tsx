@@ -52,37 +52,39 @@ export default function BookDetailScreen({
           <View style={styles.headerSpacer} />
         </View>
 
-        {/* Capa do livro */}
         <View
           style={[
-            styles.cover,
+            styles.coverStage,
             { backgroundColor: book.coverColor },
           ]}
         >
-          {book.imageUri ? (
-            <Image
-              source={{ uri: book.imageUri }}
-              style={styles.coverImage}
-              resizeMode="cover"
-              accessibilityLabel={`Capa de ${book.title}`}
-            />
-          ) : (
-            <View style={styles.coverDecoration}>
-              <Text style={styles.coverEmoji}>
-                {book.emoji}
-              </Text>
+          {/* Capa do livro */}
+          <View style={styles.coverBook}>
+            {book.imageUri ? (
+              <Image
+                source={{ uri: book.imageUri }}
+                style={styles.coverImage}
+                resizeMode="contain"
+                accessibilityLabel={`Capa de ${book.title}`}
+              />
+            ) : (
+              <View style={styles.coverDecoration}>
+                <Text style={styles.coverEmoji}>
+                  {book.emoji}
+                </Text>
 
-              <View style={styles.coverLine} />
+                <View style={styles.coverLine} />
 
-              <Text style={styles.coverTitle}>
-                {book.title}
-              </Text>
+                <Text style={styles.coverTitle}>
+                  {book.title}
+                </Text>
 
-              <Text style={styles.coverAuthor}>
-                {book.author}
-              </Text>
-            </View>
-          )}
+                <Text style={styles.coverAuthor}>
+                  {book.author}
+                </Text>
+              </View>
+            )}
+          </View>
         </View>
 
         {/* Categoria */}
@@ -94,7 +96,7 @@ export default function BookDetailScreen({
           </View>
 
           <Text style={styles.editionText}>
-            BIBLI-ON
+            Biblioteca online
           </Text>
         </View>
 
@@ -107,6 +109,7 @@ export default function BookDetailScreen({
           Escrito por {book.author}
         </Text>
 
+        {/* Separador */}
         <View style={styles.divider} />
 
         {/* Descrição */}
@@ -153,12 +156,6 @@ export default function BookDetailScreen({
               Compra demonstrativa, sem cobrança.
             </Text>
           </View>
-
-          <View style={styles.purchaseIcon}>
-            <Text style={styles.purchaseEmoji}>
-              {book.emoji}
-            </Text>
-          </View>
         </View>
 
         {/* Botão de edição */}
@@ -170,7 +167,7 @@ export default function BookDetailScreen({
             ]}
             onPress={onEdit}
           >
-            <Text style={styles.editIcon}>✎</Text>
+            <Text style={styles.editIcon}></Text>
 
             <Text style={styles.editButtonText}>
               Editar informações do livro
@@ -190,7 +187,7 @@ export default function BookDetailScreen({
             Adicionar ao carrinho
           </Text>
 
-          <Text style={styles.cartIcon}>🛒</Text>
+          <Text style={styles.cartIcon}></Text>
         </Pressable>
 
         {/* Voltar */}
@@ -206,10 +203,8 @@ export default function BookDetailScreen({
           </Text>
         </Pressable>
 
-        {/* Rodapé */}
-        <Text style={styles.footer}>
-          BIBLI-ON · Histórias que aproximam.
-        </Text>
+
+       
 
       </ScrollView>
     </View>
@@ -265,15 +260,27 @@ const styles = StyleSheet.create({
   },
 
   // Capa
-  cover: {
+  coverStage: {
     width: '100%',
-    height: 320,
+    height: 350,
     borderRadius: 24,
-    padding: 17,
     marginBottom: 25,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
+  },
+
+  coverBook: {
+    width: 218,
+    height: 310,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
+    elevation: 8,
+    shadowColor: '#29271F',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 12,
   },
 
   coverDecoration: {
@@ -288,9 +295,9 @@ const styles = StyleSheet.create({
   },
 
   coverImage: {
-    position: 'absolute',
     width: '100%',
     height: '100%',
+    backgroundColor: '#FFFFFF',
   },
 
   coverEmoji: {
@@ -467,20 +474,6 @@ const styles = StyleSheet.create({
     color: '#938B7A',
     fontSize: 10,
     marginTop: 6,
-  },
-
-  purchaseIcon: {
-    width: 58,
-    height: 58,
-    borderRadius: 17,
-    backgroundColor: '#FFF2C8',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginLeft: 10,
-  },
-
-  purchaseEmoji: {
-    fontSize: 28,
   },
 
   // Botão editar

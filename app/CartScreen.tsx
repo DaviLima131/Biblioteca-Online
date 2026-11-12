@@ -82,7 +82,7 @@ export default function CartScreen({
                     <Image
                       source={{ uri: book.imageUri }}
                       style={styles.bookCoverImage}
-                      resizeMode="cover"
+                      resizeMode="contain"
                       accessibilityLabel={`Capa de ${book.title}`}
                     />
                   ) : (
@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
     width: 75,
     height: 100,
     borderRadius: 11,
+    backgroundColor: '#FFFFFF',
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',

@@ -28,6 +28,13 @@ export default function AdminBookScreen({
   const [title, setTitle] = useState(initialBook?.title ?? '');
   const [author, setAuthor] = useState(initialBook?.author ?? '');
   const [category, setCategory] = useState(initialBook?.category ?? '');
+  const [isCustomCategory, setIsCustomCategory] = useState(
+    initialBook
+      ? !bookCategories.some(
+          (bookCategory) => bookCategory === initialBook.category
+        )
+      : false
+  );
   const [description, setDescription] = useState(initialBook?.description ?? '');
   const [price, setPrice] = useState(
     initialBook ? String(initialBook.price).replace('.', ',') : ''
@@ -150,7 +157,10 @@ export default function AdminBookScreen({
                     key={bookCategory}
                     accessibilityRole="button"
                     accessibilityState={{ selected: isSelected }}
-                    onPress={() => setCategory(bookCategory)}
+                    onPress={() => {
+                      setCategory(bookCategory);
+                      setIsCustomCategory(false);
+                    }}
                     style={[
                       styles.categoryOption,
                       isSelected && styles.categoryOptionSelected,
@@ -167,7 +177,42 @@ export default function AdminBookScreen({
                   </Pressable>
                 );
               })}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected: isCustomCategory }}
+                onPress={() => {
+                  if (!isCustomCategory) {
+                    setCategory('');
+                  }
+                  setIsCustomCategory(true);
+                }}
+                style={[
+                  styles.categoryOption,
+                  isCustomCategory && styles.categoryOptionSelected,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryOptionText,
+                    isCustomCategory && styles.categoryOptionTextSelected,
+                  ]}
+                >
+                  Outro
+                </Text>
+              </Pressable>
             </View>
+            {isCustomCategory && (
+              <TextInput
+                accessibilityLabel="Gênero personalizado do livro"
+                style={[styles.input, styles.customCategoryInput]}
+                placeholder="Digite o gênero do livro"
+                placeholderTextColor="#A6A39B"
+                value={category}
+                onChangeText={setCategory}
+                autoCapitalize="words"
+                returnKeyType="done"
+              />
+            )}
           </View>
           <Field
             label="Descrição"
@@ -323,6 +368,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+  },
+  customCategoryInput: {
+    marginTop: 12,
   },
   categoryOption: {
     borderWidth: 1,
