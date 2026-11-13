@@ -42,6 +42,9 @@ export default function AdminBookScreen({
   const [imageUri, setImageUri] = useState<string | null>(
     initialBook?.imageUri ?? null
   );
+  const [lendingLocationsText, setLendingLocationsText] = useState(
+    initialBook?.lendingLocations?.join('\n') ?? ''
+  );
 
   const handleChooseImage = async () => {
     try {
@@ -95,12 +98,23 @@ export default function AdminBookScreen({
       return;
     }
 
+    const lendingLocations = Array.from(
+      new Map(
+        lendingLocationsText
+          .split('\n')
+          .map((location) => location.trim())
+          .filter(Boolean)
+          .map((location) => [location.toLocaleLowerCase(), location])
+      ).values()
+    );
+
     onPublish({
       title: title.trim(),
       author: author.trim(),
       category: category.trim(),
       description: description.trim(),
       price: normalizedPrice,
+      lendingLocations,
       imageUri: imageUri ?? undefined,
     });
   };
@@ -250,6 +264,23 @@ export default function AdminBookScreen({
             onChangeText={setPrice}
             keyboardType="decimal-pad"
           />
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>Locais para retirada de empréstimo</Text>
+            <TextInput
+              accessibilityLabel="Locais para retirada de empréstimo"
+              style={[styles.input, styles.multilineInput]}
+              placeholder={'Um local por linha (ex.: Biblioteca Central)'}
+              placeholderTextColor="#A6A39B"
+              value={lendingLocationsText}
+              onChangeText={setLendingLocationsText}
+              multiline
+              textAlignVertical="top"
+              autoCapitalize="words"
+            />
+            <Text style={styles.fieldHint}>
+              Deixe em branco se o livro não estiver disponível para empréstimo.
+            </Text>
+          </View>
 
           <Pressable
             accessibilityRole="button"
@@ -363,6 +394,12 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     marginBottom: 8,
+  },
+  fieldHint: {
+    color: '#817D72',
+    fontSize: 11,
+    lineHeight: 16,
+    marginTop: 7,
   },
   categories: {
     flexDirection: 'row',

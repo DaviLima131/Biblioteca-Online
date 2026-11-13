@@ -1,5 +1,6 @@
 
 import { StatusBar } from 'expo-status-bar';
+import { useState } from 'react';
 import {
   Image,
   Pressable,
@@ -17,6 +18,8 @@ type Props = {
   isAdmin: boolean;
   onBack: () => void;
   onAddToCart: (book: Book) => void;
+  borrowed: boolean;
+  onBorrow: (book: Book, pickupLocation: string) => void;
   onEdit: () => void;
 };
 
@@ -25,8 +28,15 @@ export default function BookDetailScreen({
   isAdmin,
   onBack,
   onAddToCart,
+  borrowed,
+  onBorrow,
   onEdit,
 }: Props) {
+  const lendingLocations = book.lendingLocations ?? [];
+  const [selectedPickupLocation, setSelectedPickupLocation] = useState(
+    lendingLocations[0] ?? ''
+  );
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
@@ -108,6 +118,70 @@ export default function BookDetailScreen({
         <Text style={styles.author}>
           Escrito por {book.author}
         </Text>
+
+        {!isAdmin && (
+          <View style={styles.lendingCard}>
+            <Text style={styles.lendingTitle}>Disponível para empréstimo</Text>
+            {lendingLocations.length > 0 ? (
+              <>
+                <Text style={styles.lendingDescription}>
+                  Escolha onde deseja retirar este livro:
+                </Text>
+                <View style={styles.locations}>
+                  {lendingLocations.map((location) => {
+                    const isSelected = selectedPickupLocation === location;
+
+                    return (
+                      <Pressable
+                        key={location}
+                        accessibilityRole="button"
+                        accessibilityState={{ selected: isSelected }}
+                        onPress={() => setSelectedPickupLocation(location)}
+                        style={({ pressed }) => [
+                          styles.locationOption,
+                          isSelected && styles.locationOptionSelected,
+                          pressed && styles.locationOptionPressed,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.locationText,
+                            isSelected && styles.locationTextSelected,
+                          ]}
+                        >
+                          {location}
+                          {isSelected ? '  ✓' : ''}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+                <Text style={styles.selectedLocation}>
+                  Retirada em: {selectedPickupLocation}
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityState={{ disabled: borrowed }}
+                  disabled={borrowed}
+                  style={({ pressed }) => [
+                    styles.borrowButton,
+                    borrowed && styles.borrowButtonDisabled,
+                    pressed && !borrowed && styles.buttonPressed,
+                  ]}
+                  onPress={() => onBorrow(book, selectedPickupLocation)}
+                >
+                  <Text style={styles.borrowButtonText}>
+                    {borrowed ? 'Empréstimo solicitado' : 'Confirmar empréstimo'}
+                  </Text>
+                </Pressable>
+              </>
+            ) : (
+              <Text style={styles.lendingDescription}>
+                Este livro não está disponível para empréstimo no momento.
+              </Text>
+            )}
+          </View>
+        )}
 
         {/* Separador */}
         <View style={styles.divider} />
@@ -474,6 +548,89 @@ const styles = StyleSheet.create({
     color: '#938B7A',
     fontSize: 10,
     marginTop: 6,
+  },
+
+  lendingCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#EFE5D0',
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 19,
+  },
+
+  lendingTitle: {
+    color: '#29271F',
+    fontSize: 17,
+    fontWeight: '900',
+  },
+
+  lendingDescription: {
+    color: '#817D72',
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 7,
+  },
+
+  locations: {
+    gap: 8,
+    marginTop: 13,
+  },
+
+  locationOption: {
+    borderWidth: 1,
+    borderColor: '#E7DFCD',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 13,
+    paddingVertical: 11,
+    borderRadius: 12,
+  },
+
+  locationOptionSelected: {
+    backgroundColor: '#FFF1C4',
+    borderColor: '#D5AA2C',
+  },
+
+  locationOptionPressed: {
+    opacity: 0.75,
+  },
+
+  locationText: {
+    color: '#625D51',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+
+  locationTextSelected: {
+    color: '#514014',
+    fontWeight: '800',
+  },
+
+  selectedLocation: {
+    color: '#66552A',
+    fontSize: 12,
+    fontWeight: '700',
+    marginTop: 12,
+  },
+
+  borrowButton: {
+    minHeight: 49,
+    borderRadius: 12,
+    backgroundColor: '#29271F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 14,
+    marginTop: 15,
+  },
+
+  borrowButtonDisabled: {
+    backgroundColor: '#E9E5DC',
+  },
+
+  borrowButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
   },
 
   // Botão editar

@@ -1,4 +1,3 @@
-
 import { StatusBar } from 'expo-status-bar';
 import { useState } from 'react';
 import {
@@ -13,7 +12,6 @@ import {
 } from 'react-native';
 
 import type { AuthMode, AuthScreenName } from './types';
-import './App';
 
 type Props = {
   mode: AuthMode;

@@ -1,12 +1,14 @@
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import LoginScreen from './LoginScreen';
 import RegisterScreen from './RegisterScreen';
 import HomeScreen from './HomeScreen';
 import BookDetailScreen from './BookDetailScreen';
 import AdminBookScreen from './AdminBookScreen';
+import AdminLoansScreen from './AdminLoansScreen';
 import CartScreen from './CartScreen';
 import CheckoutScreen from './CheckoutScreen';
 
@@ -14,6 +16,8 @@ import {
   books as initialBooks,
   type Book,
   type CartItem,
+  type LoanRequest,
+  type LoanStatus,
   type NewBook,
 } from './books';
 
@@ -21,6 +25,7 @@ import type { AppScreenName, AuthScreenName } from './types';
 
 const DEMO_ADMIN_NAME = 'admin';
 const DEMO_ADMIN_PASSWORD = 'admin123';
+const ACCOUNTS_STORAGE_KEY = 'biblioteca-online-accounts';
 
 type LocalAccount = {
   name: string;
@@ -30,12 +35,65 @@ type LocalAccount = {
 export default function App() {
   const [screen, setScreen] = useState<AppScreenName>('login');
   const [accounts, setAccounts] = useState<LocalAccount[]>([]);
+  const [isAccountsReady, setIsAccountsReady] = useState(false);
   const [userName, setUserName] = useState('');
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [catalog, setCatalog] = useState<Book[]>(initialBooks);
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadAccounts = async () => {
+      try {
+        const storedAccounts = await AsyncStorage.getItem(ACCOUNTS_STORAGE_KEY);
+
+        if (!storedAccounts) {
+          return;
+        }
+
+        const parsedAccounts = JSON.parse(storedAccounts) as LocalAccount[];
+
+        if (Array.isArray(parsedAccounts) && isMounted) {
+          setAccounts(parsedAccounts);
+        }
+      } catch (error) {
+        console.warn('Não foi possível carregar os usuários salvos.', error);
+      } finally {
+        if (isMounted) {
+          setIsAccountsReady(true);
+        }
+      }
+    };
+
+    loadAccounts();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isAccountsReady) {
+      return;
+    }
+
+    const saveAccounts = async () => {
+      try {
+        await AsyncStorage.setItem(
+          ACCOUNTS_STORAGE_KEY,
+          JSON.stringify(accounts)
+        );
+      } catch (error) {
+        console.warn('Não foi possível salvar os usuários.', error);
+      }
+    };
+
+    saveAccounts();
+  }, [accounts, isAccountsReady]);
 
   // CADASTRO
   const handleRegister = (name: string, password: string) => {
@@ -179,6 +237,84 @@ export default function App() {
     setScreen('cart');
   };
 
+  const handleBorrowBook = (book: Book, pickupLocation: string) => {
+    if (isAdmin) {
+      Alert.alert(
+        'Empréstimo indisponível',
+        'A conta de administrador não pode solicitar empréstimos.'
+      );
+      return;
+    }
+
+    const alreadyRequested = loanRequests.some(
+      (request) =>
+        request.bookId === book.id &&
+        request.borrowerName === userName &&
+        request.status !== 'returned'
+    );
+
+    if (alreadyRequested) {
+      Alert.alert(
+        'Empréstimo já solicitado',
+        'Você já solicitou este livro nesta sessão.'
+      );
+      return;
+    }
+
+    setLoanRequests((currentRequests) => [
+      {
+        id: `${Date.now()}-${currentRequests.length}`,
+        bookId: book.id,
+        bookTitle: book.title,
+        borrowerName: userName,
+        pickupLocation,
+        requestedAt: new Date().toLocaleString('pt-BR'),
+        status: 'requested',
+      },
+      ...currentRequests,
+    ]);
+    Alert.alert(
+      'Empréstimo solicitado',
+      `Sua solicitação para "${book.title}" foi registrada. Retire o livro em: ${pickupLocation}.`
+    );
+  };
+
+  const handleUpdateLoanStatus = (loanId: string, status: LoanStatus) => {
+    const updatedAt = new Date().toLocaleString('pt-BR');
+
+    setLoanRequests((currentRequests) =>
+      currentRequests.map((request) => {
+        if (request.id !== loanId || request.status === status) {
+          return request;
+        }
+
+        if (status === 'requested') {
+          return {
+            ...request,
+            status,
+            pickedUpAt: undefined,
+            returnedAt: undefined,
+          };
+        }
+
+        if (status === 'borrowed') {
+          return {
+            ...request,
+            status,
+            pickedUpAt: updatedAt,
+            returnedAt: undefined,
+          };
+        }
+
+        return {
+          ...request,
+          status,
+          returnedAt: updatedAt,
+        };
+      })
+    );
+  };
+
   // ALTERAR QUANTIDADE DO CARRINHO
   const handleChangeCartQuantity = (
     bookId: string,
@@ -206,6 +342,10 @@ export default function App() {
           (count, item) => count + item.quantity,
           0
         )}
+        loanRequestCount={
+          loanRequests.filter((request) => request.status === 'requested')
+            .length
+        }
         onNavigate={handleNavigate}
         onOpenCart={() => setScreen('cart')}
         onSelectBook={(book) => {
@@ -216,6 +356,7 @@ export default function App() {
           setEditingBook(null);
           setScreen('adminBook');
         }}
+        onOpenLoans={() => setScreen('adminLoans')}
         onDeleteBook={(bookId) => {
           setCatalog((currentCatalog) =>
             currentCatalog.filter((book) => book.id !== bookId)
@@ -225,6 +366,21 @@ export default function App() {
             currentCart.filter((item) => item.book.id !== bookId)
           );
         }}
+      />
+    );
+  }
+
+  if (screen === 'adminLoans' && isAdmin) {
+    return (
+      <AdminLoansScreen
+        loanRequests={loanRequests}
+        onBack={() => setScreen('home')}
+        onDeleteLoanRequest={(loanId) =>
+          setLoanRequests((currentRequests) =>
+            currentRequests.filter((request) => request.id !== loanId)
+          )
+        }
+        onUpdateLoanStatus={handleUpdateLoanStatus}
       />
     );
   }
@@ -277,6 +433,13 @@ export default function App() {
         isAdmin={isAdmin}
         onBack={() => setScreen('home')}
         onAddToCart={handleAddToCart}
+        borrowed={loanRequests.some(
+          (request) =>
+            request.bookId === selectedBook.id &&
+            request.borrowerName === userName &&
+            request.status !== 'returned'
+        )}
+        onBorrow={handleBorrowBook}
         onEdit={() => {
           setEditingBook(selectedBook);
           setScreen('adminBook');

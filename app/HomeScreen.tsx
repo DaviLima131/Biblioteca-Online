@@ -19,10 +19,12 @@ type Props = {
   catalog: Book[];
   isAdmin: boolean;
   cartItemCount: number;
+  loanRequestCount: number;
   onNavigate: (screen: AuthScreenName) => void;
   onOpenCart: () => void;
   onSelectBook: (book: Book) => void;
   onOpenAdmin: () => void;
+  onOpenLoans: () => void;
   onDeleteBook: (bookId: string) => void;
 };
 
@@ -31,10 +33,12 @@ export default function HomeScreen({
   catalog,
   isAdmin,
   cartItemCount,
+  loanRequestCount,
   onNavigate,
   onOpenCart,
   onSelectBook,
   onOpenAdmin,
+  onOpenLoans,
   onDeleteBook,
 }: Props) {
   const [search, setSearch] = useState('');
@@ -115,13 +119,24 @@ export default function HomeScreen({
         </View>
 
         {isAdmin && (
-          <Pressable
-            accessibilityRole="button"
-            onPress={onOpenAdmin}
-            style={styles.adminButton}
-          >
-            <Text style={styles.adminButtonText}>＋ Publicar um livro</Text>
-          </Pressable>
+          <View style={styles.adminActions}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenAdmin}
+              style={styles.adminButton}
+            >
+              <Text style={styles.adminButtonText}>＋ Publicar um livro</Text>
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              onPress={onOpenLoans}
+              style={styles.loansButton}
+            >
+              <Text style={styles.loansButtonText}>
+                Empréstimos{loanRequestCount > 0 ? ` (${loanRequestCount})` : ''}
+              </Text>
+            </Pressable>
+          </View>
         )}
 
         <TextInput
@@ -354,8 +369,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 17,
     marginBottom: 19,
   },
+  adminActions: {
+    gap: 9,
+    marginBottom: 19,
+  },
   adminButtonText: {
     color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '800',
+    textAlign: 'center',
+  },
+  loansButton: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E8DFC9',
+    borderRadius: 12,
+    minHeight: 46,
+    justifyContent: 'center',
+    paddingHorizontal: 17,
+  },
+  loansButtonText: {
+    color: '#66552A',
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',

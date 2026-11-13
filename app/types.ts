@@ -5,5 +5,6 @@ export type AppScreenName =
   | AuthScreenName
   | 'bookDetail'
   | 'adminBook'
+  | 'adminLoans'
   | 'cart'
   | 'checkout';
