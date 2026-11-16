@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Biblioteca Online",
-    "slug": "Biblioteca-online",
+    "name": "Livraria Online",
+    "slug": "livraria-online",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -10,7 +10,7 @@
       [
         "expo-image-picker",
         {
-          "photosPermission": "Permita que a Biblioteca Online acesse suas fotos para adicionar capas aos livros.",
+          "photosPermission": "Permita que a Livraria Online acesse suas fotos para adicionar capas aos livros.",
           "cameraPermission": false,
           "microphonePermission": false
         }

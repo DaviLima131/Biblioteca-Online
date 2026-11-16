@@ -77,7 +77,7 @@ export default function AuthScreen({
             style={styles.logo}
             resizeMode="contain"
             accessible
-            accessibilityLabel="Logo da Biblioteca Online"
+            accessibilityLabel="Logo da Livraria Online"
           />
         </View>
 

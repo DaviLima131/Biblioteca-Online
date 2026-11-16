@@ -32,6 +32,51 @@ type LocalAccount = {
   password: string;
 };
 
+const getUniqueLendingLocations = (locations: string[]) => {
+  const uniqueLocations = new Map<string, string>();
+
+  locations.forEach((location) => {
+    const trimmedLocation = location.trim();
+    if (trimmedLocation) {
+      uniqueLocations.set(trimmedLocation.toLowerCase(), trimmedLocation);
+    }
+  });
+
+  return Array.from(uniqueLocations.values());
+};
+
+const replaceBookLendingLocation = (
+  book: Book,
+  location: string,
+  replacement: string
+): Book => {
+  const lendingLocations = book.lendingLocations ?? [];
+
+  if (!lendingLocations.some((item) => item.toLowerCase() === location.toLowerCase())) {
+    return book;
+  }
+
+  return {
+    ...book,
+    lendingLocations: getUniqueLendingLocations(
+      lendingLocations.map((item) =>
+        item.toLowerCase() === location.toLowerCase() ? replacement : item
+      )
+    ),
+  };
+};
+
+const removeBookLendingLocation = (book: Book, location: string): Book => {
+  const lendingLocations = book.lendingLocations ?? [];
+  const updatedLocations = lendingLocations.filter(
+    (item) => item.toLowerCase() !== location.toLowerCase()
+  );
+
+  return updatedLocations.length === lendingLocations.length
+    ? book
+    : { ...book, lendingLocations: updatedLocations };
+};
+
 export default function App() {
   const [screen, setScreen] = useState<AppScreenName>('login');
   const [accounts, setAccounts] = useState<LocalAccount[]>([]);
@@ -40,6 +85,12 @@ export default function App() {
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [catalog, setCatalog] = useState<Book[]>(initialBooks);
+  const [savedLendingLocations, setSavedLendingLocations] = useState<string[]>(
+    () =>
+      getUniqueLendingLocations(
+        initialBooks.flatMap((book) => book.lendingLocations ?? [])
+      )
+  );
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -179,6 +230,13 @@ export default function App() {
 
   // PUBLICAR OU EDITAR LIVRO
   const handlePublishBook = (newBook: NewBook) => {
+    setSavedLendingLocations((currentLocations) =>
+      getUniqueLendingLocations([
+        ...currentLocations,
+        ...(newBook.lendingLocations ?? []),
+      ])
+    );
+
     if (editingBook) {
       const updatedBook: Book = {
         ...editingBook,
@@ -216,8 +274,67 @@ export default function App() {
     setScreen('home');
   };
 
+  const handleUpdateSavedLocation = (
+    location: string,
+    replacement: string
+  ) => {
+    setSavedLendingLocations((currentLocations) =>
+      getUniqueLendingLocations(
+        currentLocations.map((item) =>
+          item.toLowerCase() === location.toLowerCase() ? replacement : item
+        )
+      )
+    );
+    setCatalog((currentCatalog) =>
+      currentCatalog.map((book) =>
+        replaceBookLendingLocation(book, location, replacement)
+      )
+    );
+    setSelectedBook((currentBook) =>
+      currentBook
+        ? replaceBookLendingLocation(currentBook, location, replacement)
+        : currentBook
+    );
+    setEditingBook((currentBook) =>
+      currentBook
+        ? replaceBookLendingLocation(currentBook, location, replacement)
+        : currentBook
+    );
+  };
+
+  const handleAddSavedLocation = (location: string) => {
+    setSavedLendingLocations((currentLocations) =>
+      getUniqueLendingLocations([...currentLocations, location])
+    );
+  };
+
+  const handleDeleteSavedLocation = (location: string) => {
+    setSavedLendingLocations((currentLocations) =>
+      currentLocations.filter(
+        (item) => item.toLowerCase() !== location.toLowerCase()
+      )
+    );
+    setCatalog((currentCatalog) =>
+      currentCatalog.map((book) => removeBookLendingLocation(book, location))
+    );
+    setSelectedBook((currentBook) =>
+      currentBook ? removeBookLendingLocation(currentBook, location) : currentBook
+    );
+    setEditingBook((currentBook) =>
+      currentBook ? removeBookLendingLocation(currentBook, location) : currentBook
+    );
+  };
+
   // ADICIONAR AO CARRINHO
   const handleAddToCart = (book: Book) => {
+    if (isAdmin) {
+      Alert.alert(
+        'Ação indisponível',
+        'O administrador gerencia o catálogo e não realiza compras.'
+      );
+      return;
+    }
+
     setCart((currentCart) => {
       const existingItem = currentCart.find(
         (item) => item.book.id === book.id
@@ -416,6 +533,10 @@ export default function App() {
     return (
       <AdminBookScreen
         initialBook={editingBook ?? undefined}
+        savedLendingLocations={savedLendingLocations}
+        onAddSavedLocation={handleAddSavedLocation}
+        onUpdateSavedLocation={handleUpdateSavedLocation}
+        onDeleteSavedLocation={handleDeleteSavedLocation}
         onBack={() => {
           setScreen(editingBook ? 'bookDetail' : 'home');
           setEditingBook(null);

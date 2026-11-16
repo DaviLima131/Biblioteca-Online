@@ -11,16 +11,29 @@ import {
   View,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { bookCategories, type Book, type NewBook } from './books';
+import {
+  bookCategories,
+  defaultLendingLocation,
+  type Book,
+  type NewBook,
+} from './books';
 
 type Props = {
   initialBook?: Book;
+  savedLendingLocations: string[];
+  onAddSavedLocation: (location: string) => void;
+  onUpdateSavedLocation: (location: string, replacement: string) => void;
+  onDeleteSavedLocation: (location: string) => void;
   onBack: () => void;
   onPublish: (book: NewBook) => void;
 };
 
 export default function AdminBookScreen({
   initialBook,
+  savedLendingLocations,
+  onAddSavedLocation,
+  onUpdateSavedLocation,
+  onDeleteSavedLocation,
   onBack,
   onPublish,
 }: Props) {
@@ -43,8 +56,128 @@ export default function AdminBookScreen({
     initialBook?.imageUri ?? null
   );
   const [lendingLocationsText, setLendingLocationsText] = useState(
-    initialBook?.lendingLocations?.join('\n') ?? ''
+    initialBook?.lendingLocations?.join('\n') ??
+      (savedLendingLocations.includes(defaultLendingLocation)
+        ? defaultLendingLocation
+        : '')
   );
+  const [newLendingLocation, setNewLendingLocation] = useState('');
+  const [editingSavedLocation, setEditingSavedLocation] = useState<
+    string | null
+  >(null);
+  const [editedSavedLocationText, setEditedSavedLocationText] = useState('');
+  const selectedLendingLocations = new Set(
+    lendingLocationsText
+      .split('\n')
+      .map((location) => location.trim().toLowerCase())
+      .filter(Boolean)
+  );
+
+  const toggleSavedLocation = (location: string) => {
+    setLendingLocationsText((currentText) => {
+      const currentLocations = currentText
+        .split('\n')
+        .map((currentLocation) => currentLocation.trim())
+        .filter(Boolean);
+      const isSelected = currentLocations.some(
+        (currentLocation) =>
+          currentLocation.toLowerCase() === location.toLowerCase()
+      );
+
+      return (
+        isSelected
+          ? currentLocations.filter(
+              (currentLocation) =>
+                currentLocation.toLowerCase() !== location.toLowerCase()
+            )
+          : [...currentLocations, location]
+      ).join('\n');
+    });
+  };
+
+  const handleAddLendingLocation = () => {
+    const enteredLocation = newLendingLocation.trim();
+    if (!enteredLocation) {
+      Alert.alert('Local inválido', 'Digite um endereço para adicionar.');
+      return;
+    }
+
+    const savedLocation = savedLendingLocations.find(
+      (location) => location.toLowerCase() === enteredLocation.toLowerCase()
+    );
+    const locationToAdd = savedLocation ?? enteredLocation;
+    const isAlreadySelected = lendingLocationsText
+      .split('\n')
+      .some(
+        (location) => location.trim().toLowerCase() === locationToAdd.toLowerCase()
+      );
+
+    if (isAlreadySelected) {
+      Alert.alert('Local já selecionado', 'Esse endereço já está selecionado.');
+      return;
+    }
+
+    setLendingLocationsText((currentText) =>
+      [...currentText.split('\n').filter(Boolean), locationToAdd].join('\n')
+    );
+    if (!savedLocation) {
+      onAddSavedLocation(locationToAdd);
+    }
+    setNewLendingLocation('');
+  };
+
+  const saveEditedSavedLocation = () => {
+    if (!editingSavedLocation) {
+      return;
+    }
+
+    const replacement = editedSavedLocationText.trim();
+    if (!replacement) {
+      Alert.alert('Local inválido', 'Informe um endereço para salvar.');
+      return;
+    }
+
+    const originalLocation = editingSavedLocation;
+    setLendingLocationsText((currentText) =>
+      currentText
+        .split('\n')
+        .map((location) =>
+          location.trim().toLowerCase() === originalLocation.toLowerCase()
+            ? replacement
+            : location
+        )
+        .join('\n')
+    );
+    onUpdateSavedLocation(originalLocation, replacement);
+    setEditingSavedLocation(null);
+  };
+
+  const confirmDeleteSavedLocation = (location: string) => {
+    Alert.alert(
+      'Excluir local cadastrado?',
+      'O local será removido de todos os livros que o utilizam.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Excluir',
+          style: 'destructive',
+          onPress: () => {
+            setLendingLocationsText((currentText) =>
+              currentText
+                .split('\n')
+                .filter(
+                  (currentLocation) =>
+                    currentLocation.trim().toLowerCase() !==
+                    location.toLowerCase()
+                )
+                .join('\n')
+            );
+            onDeleteSavedLocation(location);
+          },
+        },
+      ]
+    );
+  };
 
   const handleChooseImage = async () => {
     try {
@@ -266,19 +399,125 @@ export default function AdminBookScreen({
           />
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Locais para retirada de empréstimo</Text>
+            {savedLendingLocations.length > 0 && (
+              <View style={styles.savedLocations}>
+                <Text style={styles.savedLocationsLabel}>Locais já cadastrados</Text>
+                {savedLendingLocations.map((location) => {
+                  const isSelected = selectedLendingLocations.has(
+                    location.toLowerCase()
+                  );
+
+                  return (
+                    <View key={location} style={styles.savedLocationRow}>
+                      {editingSavedLocation === location ? (
+                        <View style={styles.savedLocationEditor}>
+                          <TextInput
+                            accessibilityLabel="Editar local cadastrado"
+                            style={styles.input}
+                            value={editedSavedLocationText}
+                            onChangeText={setEditedSavedLocationText}
+                            autoCapitalize="words"
+                          />
+                          <View style={styles.savedLocationActions}>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={saveEditedSavedLocation}
+                              style={styles.savedLocationAction}
+                            >
+                              <Text style={styles.savedLocationActionText}>
+                                Salvar
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              onPress={() => setEditingSavedLocation(null)}
+                              style={styles.savedLocationAction}
+                            >
+                              <Text style={styles.savedLocationActionText}>
+                                Cancelar
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </View>
+                      ) : (
+                        <>
+                          <Pressable
+                            accessibilityRole="button"
+                            accessibilityLabel={`Selecionar local salvo: ${location}`}
+                            accessibilityState={{ selected: isSelected }}
+                            onPress={() => toggleSavedLocation(location)}
+                            style={[
+                              styles.savedLocationOption,
+                              isSelected &&
+                                styles.savedLocationOptionSelected,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.savedLocationText,
+                                isSelected &&
+                                  styles.savedLocationTextSelected,
+                              ]}
+                            >
+                              {isSelected ? '✓  ' : '+  '}
+                              {location}
+                            </Text>
+                          </Pressable>
+                          <View style={styles.savedLocationActions}>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Editar local: ${location}`}
+                              onPress={() => {
+                                setEditingSavedLocation(location);
+                                setEditedSavedLocationText(location);
+                              }}
+                              style={styles.savedLocationAction}
+                            >
+                              <Text style={styles.savedLocationActionText}>
+                                Editar
+                              </Text>
+                            </Pressable>
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Excluir local: ${location}`}
+                              onPress={() =>
+                                confirmDeleteSavedLocation(location)
+                              }
+                              style={styles.savedLocationAction}
+                            >
+                              <Text style={styles.savedLocationActionText}>
+                                Excluir
+                              </Text>
+                            </Pressable>
+                          </View>
+                        </>
+                      )}
+                    </View>
+                  );
+                })}
+              </View>
+            )}
             <TextInput
-              accessibilityLabel="Locais para retirada de empréstimo"
-              style={[styles.input, styles.multilineInput]}
-              placeholder={'Um local por linha (ex.: Biblioteca Central)'}
+              accessibilityLabel="Novo local para retirada"
+              style={styles.input}
+              placeholder="Digite um endereço"
               placeholderTextColor="#A6A39B"
-              value={lendingLocationsText}
-              onChangeText={setLendingLocationsText}
-              multiline
-              textAlignVertical="top"
+              value={newLendingLocation}
+              onChangeText={setNewLendingLocation}
               autoCapitalize="words"
+              returnKeyType="done"
+              onSubmitEditing={handleAddLendingLocation}
             />
+            <Pressable
+              accessibilityRole="button"
+              onPress={handleAddLendingLocation}
+              style={styles.addLocationButton}
+            >
+              <Text style={styles.addLocationButtonText}>＋ Adicionar local</Text>
+            </Pressable>
             <Text style={styles.fieldHint}>
-              Deixe em branco se o livro não estiver disponível para empréstimo.
+              Selecione os locais salvos ou digite um novo endereço e toque em
+              Adicionar local. Locais sem seleção não serão usados neste livro.
             </Text>
           </View>
 
@@ -400,6 +639,77 @@ const styles = StyleSheet.create({
     fontSize: 11,
     lineHeight: 16,
     marginTop: 7,
+  },
+  addLocationButton: {
+    minHeight: 46,
+    backgroundColor: '#29271F',
+    borderRadius: 11,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 8,
+  },
+  addLocationButtonText: {
+    color: '#FFFFFF',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  savedLocations: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  savedLocationsLabel: {
+    color: '#817D72',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  savedLocationRow: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    gap: 6,
+  },
+  savedLocationEditor: {
+    flex: 1,
+    gap: 8,
+  },
+  savedLocationOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#E7DFCD',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 10,
+  },
+  savedLocationActions: {
+    justifyContent: 'center',
+    gap: 6,
+  },
+  savedLocationAction: {
+    borderWidth: 1,
+    borderColor: '#E7DFCD',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 7,
+    borderRadius: 8,
+  },
+  savedLocationActionText: {
+    color: '#66552A',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  savedLocationOptionSelected: {
+    backgroundColor: '#FFF1C4',
+    borderColor: '#D5AA2C',
+  },
+  savedLocationText: {
+    flexShrink: 1,
+    color: '#625D51',
+    fontSize: 12,
+    lineHeight: 18,
+  },
+  savedLocationTextSelected: {
+    color: '#514014',
+    fontWeight: '700',
   },
   categories: {
     flexDirection: 'row',

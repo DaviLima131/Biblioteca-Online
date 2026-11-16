@@ -57,7 +57,9 @@ export default function BookDetailScreen({
             <Text style={styles.backText}>‹</Text>
           </Pressable>
 
-          <Text style={styles.headerTitle}>Detalhes do livro</Text>
+          <Text style={styles.headerTitle}>
+            {isAdmin ? 'Gerenciar livro' : 'Detalhes do livro'}
+          </Text>
 
           <View style={styles.headerSpacer} />
         </View>
@@ -106,7 +108,7 @@ export default function BookDetailScreen({
           </View>
 
           <Text style={styles.editionText}>
-            Biblioteca online
+            {isAdmin ? 'MODO ADMIN' : 'Livraria online'}
           </Text>
         </View>
 
@@ -198,37 +200,41 @@ export default function BookDetailScreen({
         </View>
 
         {/* Card informativo */}
-        <View style={styles.infoCard}>
-          <View style={styles.infoIcon}>
-            <Text style={styles.infoEmoji}>📚</Text>
-          </View>
+        {!isAdmin && (
+          <View style={styles.infoCard}>
+            <View style={styles.infoIcon}>
+              <Text style={styles.infoEmoji}>📚</Text>
+            </View>
 
-          <View style={styles.infoContent}>
-            <Text style={styles.infoTitle}>
-              Sua próxima leitura começa aqui!
-            </Text>
+            <View style={styles.infoContent}>
+              <Text style={styles.infoTitle}>
+                Sua próxima leitura começa aqui!
+              </Text>
 
-            <Text style={styles.infoDescription}>
-              Descubra novas histórias, personagens e
-              experiências através da leitura.
-            </Text>
+              <Text style={styles.infoDescription}>
+                Descubra novas histórias, personagens e
+                experiências através da leitura.
+              </Text>
+            </View>
           </View>
-        </View>
+        )}
 
         {/* Preço */}
         <View style={styles.purchaseCard}>
           <View style={styles.priceContent}>
             <Text style={styles.priceLabel}>
-              VALOR DO LIVRO
+              {isAdmin ? 'PREÇO CADASTRADO' : 'VALOR DO LIVRO'}
             </Text>
 
             <Text style={styles.price}>
               {formatPrice(book.price)}
             </Text>
 
-            <Text style={styles.priceNote}>
-              Compra demonstrativa, sem cobrança.
-            </Text>
+            {!isAdmin && (
+              <Text style={styles.priceNote}>
+                Compra demonstrativa, sem cobrança.
+              </Text>
+            )}
           </View>
         </View>
 
@@ -250,19 +256,21 @@ export default function BookDetailScreen({
         )}
 
         {/* Adicionar ao carrinho */}
-        <Pressable
-          style={({ pressed }) => [
-            styles.buyButton,
-            pressed && styles.buttonPressed,
-          ]}
-          onPress={() => onAddToCart(book)}
-        >
-          <Text style={styles.buyButtonText}>
-            Adicionar ao carrinho
-          </Text>
+        {!isAdmin && (
+          <Pressable
+            style={({ pressed }) => [
+              styles.buyButton,
+              pressed && styles.buttonPressed,
+            ]}
+            onPress={() => onAddToCart(book)}
+          >
+            <Text style={styles.buyButtonText}>
+              Adicionar ao carrinho
+            </Text>
 
-          <Text style={styles.cartIcon}></Text>
-        </Pressable>
+            <Text style={styles.cartIcon}></Text>
+          </Pressable>
+        )}
 
         {/* Voltar */}
         <Pressable

@@ -76,22 +76,24 @@ export default function HomeScreen({
               style={styles.logo}
               resizeMode="contain"
               accessible
-              accessibilityLabel="Logo da Biblioteca Online"
+              accessibilityLabel="Logo da Livraria Online"
             />
           
           </View>
 
           <View style={styles.headerActions}>
-            <Pressable
-              style={styles.cartButton}
-              onPress={onOpenCart}
-              accessibilityRole="button"
-              accessibilityLabel={`Abrir carrinho, ${cartItemCount} itens`}
-            >
-              <Text style={styles.cartButtonText}>
-                Carrinho{cartItemCount > 0 ? ` (${cartItemCount})` : ''}
-              </Text>
-            </Pressable>
+            {!isAdmin && (
+              <Pressable
+                style={styles.cartButton}
+                onPress={onOpenCart}
+                accessibilityRole="button"
+                accessibilityLabel={`Abrir carrinho, ${cartItemCount} itens`}
+              >
+                <Text style={styles.cartButtonText}>
+                  Carrinho{cartItemCount > 0 ? ` (${cartItemCount})` : ''}
+                </Text>
+              </Pressable>
+            )}
             <Pressable
               style={styles.logoutButton}
               onPress={() =>
@@ -109,12 +111,23 @@ export default function HomeScreen({
           </View>
         </View>
 
+        {isAdmin && (
+          <View style={styles.adminBanner}>
+            <Text style={styles.adminBannerLabel}>ACESSO ADMINISTRATIVO</Text>
+            <Text style={styles.adminBannerText}>
+              Gerencie livros, locais de retirada e empréstimos.
+            </Text>
+          </View>
+        )}
+
         <View style={styles.welcome}>
           <Text style={styles.greeting}>
-            Olá, {userName || 'leitor'}!
+            {isAdmin ? 'Painel do administrador' : `Olá, ${userName || 'leitor'}!`}
           </Text>
           <Text style={styles.subtitle}>
-            Que tal descobrir uma nova história hoje?
+            {isAdmin
+              ? 'Edite o catálogo e acompanhe as solicitações.'
+              : 'Que tal descobrir uma nova história hoje?'}
           </Text>
         </View>
 
@@ -125,7 +138,7 @@ export default function HomeScreen({
               onPress={onOpenAdmin}
               style={styles.adminButton}
             >
-              <Text style={styles.adminButtonText}>＋ Publicar um livro</Text>
+              <Text style={styles.adminButtonText}>＋ Cadastrar livro</Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -133,7 +146,8 @@ export default function HomeScreen({
               style={styles.loansButton}
             >
               <Text style={styles.loansButtonText}>
-                Empréstimos{loanRequestCount > 0 ? ` (${loanRequestCount})` : ''}
+                Gerenciar empréstimos
+                {loanRequestCount > 0 ? ` (${loanRequestCount} pendentes)` : ''}
               </Text>
             </Pressable>
           </View>
@@ -148,19 +162,23 @@ export default function HomeScreen({
           autoCapitalize="none"
         />
 
-        <View style={styles.featured}>
-          <Text style={styles.featuredLabel}>
-            SEU PRÓXIMO CAPÍTULO
-          </Text>
-          <Text style={styles.featuredTitle}>
-            Um mundo de histórias espera por você.
-          </Text>
-          <Text style={styles.featuredDescription}>
-            Explore novos universos e encontre sua próxima leitura.
-          </Text>
-        </View>
+        {!isAdmin && (
+          <View style={styles.featured}>
+            <Text style={styles.featuredLabel}>
+              SEU PRÓXIMO CAPÍTULO
+            </Text>
+            <Text style={styles.featuredTitle}>
+              Um mundo de histórias espera por você.
+            </Text>
+            <Text style={styles.featuredDescription}>
+              Explore novos universos e encontre sua próxima leitura.
+            </Text>
+          </View>
+        )}
 
-        <Text style={styles.sectionTitle}>Explore por categoria</Text>
+        <Text style={styles.sectionTitle}>
+          {isAdmin ? 'Filtrar catálogo por categoria' : 'Explore por categoria'}
+        </Text>
 
         <ScrollView
           horizontal
@@ -194,7 +212,7 @@ export default function HomeScreen({
 
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>
-            Livros para descobrir
+            {isAdmin ? 'Gerenciar catálogo' : 'Livros para descobrir'}
           </Text>
           <Text style={styles.bookCount}>
             {filteredBooks.length} livros
@@ -212,7 +230,9 @@ export default function HomeScreen({
                 style={styles.bookCardContent}
                 onPress={() => onSelectBook(book)}
                 accessibilityRole="button"
-                accessibilityLabel={`Conhecer ${book.title}`}
+                accessibilityLabel={
+                  isAdmin ? `Editar ${book.title}` : `Conhecer ${book.title}`
+                }
               >
                 <View
                   style={[
@@ -239,7 +259,7 @@ export default function HomeScreen({
                   <Text style={styles.bookTitle}>{book.title}</Text>
                   <Text style={styles.bookAuthor}>{book.author}</Text>
                   <Text style={styles.bookAction}>
-                    Conhecer livro →
+                    {isAdmin ? 'Editar cadastro →' : 'Conhecer livro →'}
                   </Text>
                 </View>
               </Pressable>
@@ -299,7 +319,9 @@ export default function HomeScreen({
         )}
 
         <Text style={styles.footer}>
-          Biblioteca Online · Histórias que aproximam.
+          {isAdmin
+            ? 'Painel administrativo · Livraria Online'
+            : 'Livraria Online · Histórias que aproximam.'}
         </Text>
       </ScrollView>
     </View>
@@ -326,6 +348,25 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+  },
+  adminBanner: {
+    backgroundColor: '#29271F',
+    borderRadius: 16,
+    padding: 17,
+    marginBottom: 22,
+  },
+  adminBannerLabel: {
+    color: '#F1C43F',
+    fontSize: 10,
+    fontWeight: '900',
+    letterSpacing: 1.1,
+  },
+  adminBannerText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '700',
+    lineHeight: 20,
+    marginTop: 6,
   },
   logo: {
     width: 110,
@@ -363,7 +404,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   adminButton: {
-    backgroundColor: '#29271F',
+    backgroundColor: '#9A791F',
     borderRadius: 12,
     paddingVertical: 14,
     paddingHorizontal: 17,
@@ -380,16 +421,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   loansButton: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#29271F',
     borderWidth: 1,
-    borderColor: '#E8DFC9',
+    borderColor: '#29271F',
     borderRadius: 12,
     minHeight: 46,
     justifyContent: 'center',
     paddingHorizontal: 17,
   },
   loansButtonText: {
-    color: '#66552A',
+    color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '800',
     textAlign: 'center',

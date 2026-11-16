@@ -47,6 +47,9 @@ export const bookCategories = [
   'Poesia',
 ] as const;
 
+export const defaultLendingLocation =
+  'Av. Rocha Pombo, 3028 - Cruzeiro, São José dos Pinhais - PR, 83010-620';
+
 export const books: Book[] = [
   {
     id: '1',
@@ -56,7 +59,7 @@ export const books: Book[] = [
     description:
       'Uma viagem poética por planetas e encontros extraordinários. Ao lado de um pequeno príncipe, descubra reflexões sobre amizade, afeto e o que realmente importa.',
     price: 39.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/15231561-L.jpg',
     emoji: '',
     coverColor: '#FFF0C4',
@@ -69,7 +72,7 @@ export const books: Book[] = [
     description:
       'Elizabeth Bennet e Fitzwilliam Darcy precisam rever suas primeiras impressões enquanto navegam os costumes, as relações e os desafios da sociedade inglesa.',
     price: 44.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/14348537-L.jpg',
     emoji: '',
     coverColor: '#F8DFDA',
@@ -82,7 +85,7 @@ export const books: Book[] = [
     description:
       'Acompanhe o brilhante detetive Sherlock Holmes e seu parceiro Dr. Watson em investigações cheias de pistas, dedução e mistérios surpreendentes.',
     price: 34.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/6717853-L.jpg',
     emoji: '',
     coverColor: '#E3E9D5',
@@ -95,7 +98,7 @@ export const books: Book[] = [
     description:
       'Depois de seguir um coelho apressado, Alice cai em um mundo fantástico onde criaturas curiosas e situações inesperadas desafiam toda a lógica.',
     price: 36.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/10527843-L.jpg',
     emoji: '',
     coverColor: '#DDEBFA',
@@ -108,7 +111,7 @@ export const books: Book[] = [
     description:
       'Bentinho relembra sua história com Capitu em uma narrativa clássica da literatura brasileira, marcada por ciúmes, dúvidas e reflexões sobre a memória.',
     price: 29.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/647501-L.jpg',
     emoji: '',
     coverColor: '#EADFCB',
@@ -121,7 +124,7 @@ export const books: Book[] = [
     description:
       'Bilbo Bolseiro embarca em uma aventura inesperada ao lado de anões e de Gandalf, enfrentando perigos e descobrindo sua própria coragem.',
     price: 49.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/14627509-L.jpg',
     emoji: '',
     coverColor: '#DDE8D1',
@@ -134,7 +137,7 @@ export const books: Book[] = [
     description:
       'Jim Hawkins encontra um mapa misterioso e parte em uma viagem pelo mar em busca de um tesouro, enfrentando piratas e desafios perigosos.',
     price: 32.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/13859660-L.jpg',
     emoji: '🏴',
     coverColor: '#F5E1B8',
@@ -147,7 +150,7 @@ export const books: Book[] = [
     description:
       'Durante uma viagem de trem, Hercule Poirot precisa desvendar um assassinato cercado de suspeitos, segredos e pistas intrigantes.',
     price: 42.9,
-    lendingLocations: ['Biblioteca Central'],
+    lendingLocations: [defaultLendingLocation],
     imageUri: 'https://covers.openlibrary.org/b/id/11100465-L.jpg',
     emoji: '',
     coverColor: '#E6E0F4',
