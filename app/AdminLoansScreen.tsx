@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -9,38 +10,42 @@ import {
   View,
 } from 'react-native';
 
-import type { LoanRequest, LoanStatus } from './books';
+import {
+  formatLoanDate,
+  getLoanOverdueInfo,
+  type LoanRequest,
+  type LoanStatus,
+} from './books';
 
 type Props = {
   loanRequests: LoanRequest[];
+  customerAddresses: { name: string; address: string }[];
   onBack: () => void;
   onDeleteLoanRequest: (loanId: string) => void;
   onUpdateLoanStatus: (loanId: string, status: LoanStatus) => void;
 };
 
-type FilterStatus = LoanStatus | 'all';
+type FilterStatus = LoanStatus | 'overdue' | 'all';
 
 const filters: { label: string; value: FilterStatus }[] = [
   { label: 'Todos', value: 'all' },
   { label: 'Solicitados', value: 'requested' },
   { label: 'Emprestados', value: 'borrowed' },
+  { label: 'Devoluções', value: 'returnRequested' },
+  { label: 'Atrasados', value: 'overdue' },
   { label: 'Devolvidos', value: 'returned' },
 ];
 
 const statusLabels: Record<LoanStatus, string> = {
   requested: 'Solicitado',
   borrowed: 'Emprestado',
+  returnRequested: 'Devolução solicitada',
   returned: 'Devolvido',
 };
 
-const statusOptions: { label: string; value: LoanStatus }[] = [
-  { label: 'Solicitado', value: 'requested' },
-  { label: 'Emprestado', value: 'borrowed' },
-  { label: 'Devolvido', value: 'returned' },
-];
-
 export default function AdminLoansScreen({
   loanRequests,
+  customerAddresses,
   onBack,
   onDeleteLoanRequest,
   onUpdateLoanStatus,
@@ -48,9 +53,6 @@ export default function AdminLoansScreen({
   const [selectedFilter, setSelectedFilter] = useState<FilterStatus>('all');
   const [search, setSearch] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const [pendingStatuses, setPendingStatuses] = useState<
-    Record<string, LoanStatus>
-  >({});
   const searchTerm = search.trim().toLocaleLowerCase();
   const requestedCount = loanRequests.filter(
     (request) => request.status === 'requested'
@@ -58,12 +60,21 @@ export default function AdminLoansScreen({
   const borrowedCount = loanRequests.filter(
     (request) => request.status === 'borrowed'
   ).length;
+  const returnRequestedCount = loanRequests.filter(
+    (request) => request.status === 'returnRequested'
+  ).length;
   const returnedCount = loanRequests.filter(
     (request) => request.status === 'returned'
   ).length;
+  const overdueCount = loanRequests.filter((request) =>
+    getLoanOverdueInfo(request).isOverdue
+  ).length;
   const filteredRequests = loanRequests.filter((request) => {
     const matchesStatus =
-      selectedFilter === 'all' || request.status === selectedFilter;
+      selectedFilter === 'all' ||
+      (selectedFilter === 'overdue'
+        ? getLoanOverdueInfo(request).isOverdue
+        : request.status === selectedFilter);
     const matchesSearch =
       !searchTerm ||
       request.bookTitle.toLocaleLowerCase().includes(searchTerm) ||
@@ -95,10 +106,31 @@ export default function AdminLoansScreen({
           Acompanhe solicitações, retiradas e devoluções.
         </Text>
 
+        <Text style={styles.sectionTitle}>Endereços cadastrados</Text>
+        {customerAddresses.length === 0 ? (
+          <Text style={styles.addressEmpty}>
+            Nenhum endereço cadastrado ainda.
+          </Text>
+        ) : (
+          customerAddresses.map((customer, index) => (
+            <View
+              key={`${customer.name}-${index}`}
+              style={styles.addressCard}
+            >
+              <Text style={styles.addressName}>{customer.name}</Text>
+              <Text style={styles.addressValue}>
+                {customer.address || 'Endereço não informado'}
+              </Text>
+            </View>
+          ))
+        )}
+
         <View style={styles.summary}>
           <SummaryCard label="Total" value={loanRequests.length} />
           <SummaryCard label="Novos" value={requestedCount} />
           <SummaryCard label="Emprestados" value={borrowedCount} />
+          <SummaryCard label="Devoluções" value={returnRequestedCount} />
+          <SummaryCard label="Atrasados" value={overdueCount} />
           <SummaryCard label="Devolvidos" value={returnedCount} />
         </View>
 
@@ -161,9 +193,7 @@ export default function AdminLoansScreen({
           </View>
         ) : (
           filteredRequests.map((request) => {
-            const selectedStatus =
-              pendingStatuses[request.id] ?? request.status;
-            const hasPendingChange = selectedStatus !== request.status;
+            const overdueInfo = getLoanOverdueInfo(request);
 
             return (
               <View key={request.id} style={styles.loanCard}>
@@ -174,15 +204,19 @@ export default function AdminLoansScreen({
                       styles.statusBadge,
                       request.status === 'borrowed' && styles.borrowedBadge,
                       request.status === 'returned' && styles.returnedBadge,
+                      overdueInfo.isOverdue && styles.overdueBadge,
                     ]}
                   >
                     <Text
                       style={[
                         styles.statusText,
                         request.status === 'returned' && styles.returnedText,
+                        overdueInfo.isOverdue && styles.overdueText,
                       ]}
                     >
-                      Atual: {statusLabels[request.status]}
+                      {overdueInfo.isOverdue
+                        ? `Atrasado ${overdueInfo.daysLate} dia${overdueInfo.daysLate === 1 ? '' : 's'}`
+                        : `Atual: ${statusLabels[request.status]}`}
                     </Text>
                   </View>
                 </View>
@@ -201,72 +235,75 @@ export default function AdminLoansScreen({
                     Retirada: {request.pickedUpAt}
                   </Text>
                 )}
+                {request.status === 'borrowed' && request.dueDate && (
+                  <Text
+                    style={[
+                      styles.requestedAt,
+                      overdueInfo.isOverdue && styles.overdueDate,
+                    ]}
+                  >
+                    Prazo de entrega: {formatLoanDate(request.dueDate)}
+                  </Text>
+                )}
                 {request.returnedAt && (
                   <Text style={styles.requestedAt}>
                     Devolução: {request.returnedAt}
                   </Text>
                 )}
-                <Text style={styles.detailLabel}>Nova situação</Text>
-                <View style={styles.statusOptions}>
-                  {statusOptions.map((option) => {
-                    const isSelected = selectedStatus === option.value;
-
-                    return (
-                      <Pressable
-                        key={option.value}
-                        accessibilityRole="button"
-                        accessibilityState={{ selected: isSelected }}
-                        onPress={() =>
-                          setPendingStatuses((current) => ({
-                            ...current,
-                            [request.id]: option.value,
-                          }))
-                        }
-                        style={({ pressed }) => [
-                          styles.statusOption,
-                          isSelected && styles.statusOptionSelected,
-                          pressed && styles.statusOptionPressed,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusOptionText,
-                            isSelected && styles.statusOptionTextSelected,
-                          ]}
-                        >
-                          {option.label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: !hasPendingChange }}
-                  disabled={!hasPendingChange}
-                  onPress={() => {
-                    onUpdateLoanStatus(request.id, selectedStatus);
-                    setPendingStatuses((current) => {
-                      const next = { ...current };
-                      delete next[request.id];
-                      return next;
-                    });
-                  }}
-                  style={({ pressed }) => [
-                    styles.confirmButton,
-                    !hasPendingChange && styles.confirmButtonDisabled,
-                    pressed && hasPendingChange && styles.confirmButtonPressed,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.confirmButtonText,
-                      !hasPendingChange && styles.confirmButtonTextDisabled,
+                {request.status === 'requested' && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      Alert.alert(
+                        'Confirmar retirada',
+                        `Confirmar que ${request.borrowerName} retirou "${request.bookTitle}"?`,
+                        [
+                          { text: 'Cancelar', style: 'cancel' },
+                          {
+                            text: 'Confirmar retirada',
+                            onPress: () =>
+                              onUpdateLoanStatus(request.id, 'borrowed'),
+                          },
+                        ]
+                      )
+                    }
+                    style={({ pressed }) => [
+                      styles.confirmButton,
+                      pressed && styles.confirmButtonPressed,
                     ]}
                   >
-                    Confirmar situação
-                  </Text>
-                </Pressable>
+                    <Text style={styles.confirmButtonText}>
+                      Confirmar retirada de {request.borrowerName}
+                    </Text>
+                  </Pressable>
+                )}
+                {request.status === 'returnRequested' && (
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() =>
+                      Alert.alert(
+                        'Confirmar devolução',
+                        `Confirmar que ${request.borrowerName} devolveu "${request.bookTitle}"?`,
+                        [
+                          { text: 'Cancelar', style: 'cancel' },
+                          {
+                            text: 'Confirmar devolução',
+                            onPress: () =>
+                              onUpdateLoanStatus(request.id, 'returned'),
+                          },
+                        ]
+                      )
+                    }
+                    style={({ pressed }) => [
+                      styles.confirmButton,
+                      pressed && styles.confirmButtonPressed,
+                    ]}
+                  >
+                    <Text style={styles.confirmButtonText}>
+                      Confirmar devolução de {request.borrowerName}
+                    </Text>
+                  </Pressable>
+                )}
                 {request.status === 'returned' && (
                   pendingDeleteId === request.id ? (
                     <View style={styles.deleteConfirmation}>
@@ -286,11 +323,6 @@ export default function AdminLoansScreen({
                           onPress={() => {
                             onDeleteLoanRequest(request.id);
                             setPendingDeleteId(null);
-                            setPendingStatuses((current) => {
-                              const next = { ...current };
-                              delete next[request.id];
-                              return next;
-                            });
                           }}
                           style={styles.deleteButton}
                         >
@@ -364,6 +396,36 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 21,
     marginTop: 7,
+    marginBottom: 18,
+  },
+  sectionTitle: {
+    color: '#29271F',
+    fontSize: 17,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  addressCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E9DA',
+    borderRadius: 13,
+    padding: 14,
+    marginBottom: 8,
+  },
+  addressName: {
+    color: '#29271F',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  addressValue: {
+    color: '#454237',
+    fontSize: 13,
+    lineHeight: 19,
+    marginTop: 7,
+  },
+  addressEmpty: {
+    color: '#817D72',
+    fontSize: 13,
     marginBottom: 18,
   },
   summary: {
@@ -483,6 +545,9 @@ const styles = StyleSheet.create({
   borrowedBadge: {
     backgroundColor: '#DDEBFA',
   },
+  overdueBadge: {
+    backgroundColor: '#F5D8D2',
+  },
   returnedBadge: {
     backgroundColor: '#E3E9D5',
   },
@@ -493,6 +558,13 @@ const styles = StyleSheet.create({
   },
   returnedText: {
     color: '#44553C',
+  },
+  overdueText: {
+    color: '#A33A2B',
+  },
+  overdueDate: {
+    color: '#A33A2B',
+    fontWeight: '800',
   },
   divider: {
     height: 1,

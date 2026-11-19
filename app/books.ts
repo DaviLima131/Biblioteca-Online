@@ -17,7 +17,11 @@ export type CartItem = {
   quantity: number;
 };
 
-export type LoanStatus = 'requested' | 'borrowed' | 'returned';
+export type LoanStatus =
+  | 'requested'
+  | 'borrowed'
+  | 'returnRequested'
+  | 'returned';
 
 export type LoanRequest = {
   id: string;
@@ -29,6 +33,49 @@ export type LoanRequest = {
   status: LoanStatus;
   pickedUpAt?: string;
   returnedAt?: string;
+  dueDate?: string;
+};
+
+export const LENDING_PERIOD_DAYS = 14;
+
+export const createDueDate = (from = new Date()) => {
+  const dueDate = new Date(from);
+  dueDate.setDate(dueDate.getDate() + LENDING_PERIOD_DAYS);
+  dueDate.setHours(23, 59, 59, 999);
+  return dueDate.toISOString();
+};
+
+export const formatLoanDate = (isoDate?: string) => {
+  if (!isoDate) {
+    return '';
+  }
+
+  const date = new Date(isoDate);
+  if (Number.isNaN(date.getTime())) {
+    return '';
+  }
+
+  return date.toLocaleDateString('pt-BR');
+};
+
+export const getLoanOverdueInfo = (
+  request: LoanRequest,
+  now = new Date()
+) => {
+  if (request.status !== 'borrowed' || !request.dueDate) {
+    return { isOverdue: false, daysLate: 0 };
+  }
+
+  const dueDate = new Date(request.dueDate);
+  if (Number.isNaN(dueDate.getTime()) || now.getTime() <= dueDate.getTime()) {
+    return { isOverdue: false, daysLate: 0 };
+  }
+
+  const millisecondsLate = now.getTime() - dueDate.getTime();
+  return {
+    isOverdue: true,
+    daysLate: Math.max(1, Math.ceil(millisecondsLate / 86_400_000)),
+  };
 };
 
 export type NewBook = Omit<Book, 'id' | 'emoji' | 'coverColor'>;

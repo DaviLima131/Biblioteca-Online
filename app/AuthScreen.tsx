@@ -16,7 +16,12 @@ import type { AuthMode, AuthScreenName } from './types';
 type Props = {
   mode: AuthMode;
   onNavigate: (screen: AuthScreenName) => void;
-  onSubmit: (name: string, password: string) => void;
+  onSubmit: (
+    name: string,
+    email: string,
+    password: string,
+    address: string
+  ) => void;
 };
 
 export default function AuthScreen({
@@ -27,14 +32,34 @@ export default function AuthScreen({
   const isRegister = mode === 'register';
 
   const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [address, setAddress] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleSubmit = () => {
-    const normalizedName = name.trim();
+    const normalizedName = name.trim().replace(/\s+/g, ' ');
+    const normalizedEmail = email.trim().toLowerCase();
+    const normalizedAddress = address.trim().replace(/\s+/g, ' ');
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-    if (!normalizedName || !password.trim()) {
-      Alert.alert('Atenção', 'Preencha o nome e a senha.');
+    if (isRegister && (!normalizedName || !normalizedEmail || !password.trim())) {
+      Alert.alert('Atenção', 'Preencha o nome, o e-mail e a senha.');
+      return;
+    }
+
+    if (isRegister && !normalizedAddress) {
+      Alert.alert('Atenção', 'Informe seu endereço completo.');
+      return;
+    }
+
+    if (!isRegister && (!normalizedEmail || !password.trim())) {
+      Alert.alert('Atenção', 'Preencha o e-mail ou nome de usuário e a senha.');
+      return;
+    }
+
+    if (isRegister && !emailPattern.test(normalizedEmail)) {
+      Alert.alert('E-mail inválido', 'Digite um e-mail válido.');
       return;
     }
 
@@ -59,7 +84,12 @@ export default function AuthScreen({
       return;
     }
 
-    onSubmit(normalizedName, password);
+    onSubmit(
+      isRegister ? normalizedName : '',
+      normalizedEmail,
+      password,
+      normalizedAddress
+    );
   };
 
   return (
@@ -94,17 +124,59 @@ export default function AuthScreen({
               : 'Entre para continuar sua jornada de leitura.'}
           </Text>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.label}>Nome</Text>
+          {isRegister && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Nome de usuário</Text>
 
+              <TextInput
+                style={styles.input}
+                placeholder="Escolha seu nome de usuário"
+                placeholderTextColor="#A6A39B"
+                autoCapitalize="words"
+                autoComplete="name"
+                value={name}
+                onChangeText={setName}
+                returnKeyType="next"
+              />
+            </View>
+          )}
+
+          {isRegister && (
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Endereço completo</Text>
+
+              <TextInput
+                style={[styles.input, styles.addressInput]}
+                placeholder="Rua, número, bairro, cidade e CEP"
+                placeholderTextColor="#A6A39B"
+                autoCapitalize="words"
+                autoComplete="street-address"
+                value={address}
+                onChangeText={setAddress}
+                multiline
+                textAlignVertical="top"
+              />
+            </View>
+          )}
+
+          <View style={styles.fieldGroup}>
+            <Text style={styles.label}>
+              {isRegister ? 'E-mail' : 'E-mail ou nome de usuário'}
+            </Text>
             <TextInput
               style={styles.input}
-              placeholder="Digite seu nome"
+              placeholder={
+                isRegister
+                  ? 'Digite seu e-mail'
+                  : 'Digite seu e-mail ou nome de usuário'
+              }
               placeholderTextColor="#A6A39B"
-              autoCapitalize="words"
-              autoComplete="off"
-              value={name}
-              onChangeText={setName}
+              keyboardType={isRegister ? 'email-address' : 'default'}
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete={isRegister ? 'email' : 'username'}
+              value={email}
+              onChangeText={setEmail}
               returnKeyType="next"
             />
           </View>
@@ -248,6 +320,10 @@ const styles = StyleSheet.create({
     color: '#29271F',
     backgroundColor: '#FFFEFC',
     fontSize: 14,
+  },
+  addressInput: {
+    height: 82,
+    paddingTop: 13,
   },
   submitButton: {
     minHeight: 51,

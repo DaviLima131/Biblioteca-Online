@@ -11,7 +11,13 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { bookCategories, type Book } from './books';
+import {
+  bookCategories,
+  formatLoanDate,
+  getLoanOverdueInfo,
+  type Book,
+  type LoanRequest,
+} from './books';
 import type { AuthScreenName } from './types';
 
 type Props = {
@@ -20,12 +26,14 @@ type Props = {
   isAdmin: boolean;
   cartItemCount: number;
   loanRequestCount: number;
+  myLoans: LoanRequest[];
   onNavigate: (screen: AuthScreenName) => void;
   onOpenCart: () => void;
   onSelectBook: (book: Book) => void;
   onOpenAdmin: () => void;
   onOpenLoans: () => void;
   onDeleteBook: (bookId: string) => void;
+  onRequestReturn: (loanId: string) => void;
 };
 
 export default function HomeScreen({
@@ -34,12 +42,14 @@ export default function HomeScreen({
   isAdmin,
   cartItemCount,
   loanRequestCount,
+  myLoans,
   onNavigate,
   onOpenCart,
   onSelectBook,
   onOpenAdmin,
   onOpenLoans,
   onDeleteBook,
+  onRequestReturn,
 }: Props) {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('Todos');
@@ -150,6 +160,78 @@ export default function HomeScreen({
                 {loanRequestCount > 0 ? ` (${loanRequestCount} pendentes)` : ''}
               </Text>
             </Pressable>
+          </View>
+        )}
+
+        {!isAdmin && myLoans.length > 0 && (
+          <View style={styles.myLoansCard}>
+            <Text style={styles.myLoansTitle}>Meus empréstimos</Text>
+            {myLoans.map((request) => {
+              const overdueInfo = getLoanOverdueInfo(request);
+              const statusLabel =
+                request.status === 'returned'
+                  ? 'Devolvido'
+                  : request.status === 'borrowed'
+                    ? 'Emprestado'
+                    : request.status === 'returnRequested'
+                      ? 'Devolução solicitada'
+                      : 'Solicitado';
+
+              return (
+                <View
+                  key={request.id}
+                  style={[
+                    styles.myLoanItem,
+                    overdueInfo.isOverdue && styles.myLoanItemOverdue,
+                  ]}
+                >
+                  <Text style={styles.myLoanBook}>{request.bookTitle}</Text>
+                  <Text
+                    style={[
+                      styles.myLoanStatus,
+                      overdueInfo.isOverdue && styles.myLoanStatusOverdue,
+                    ]}
+                  >
+                    {overdueInfo.isOverdue
+                      ? `ATRASADO - ${overdueInfo.daysLate} dia${overdueInfo.daysLate === 1 ? '' : 's'}`
+                      : statusLabel}
+                  </Text>
+                  {request.status === 'borrowed' && request.dueDate && (
+                    <Text style={styles.myLoanDate}>
+                      Prazo de entrega: {formatLoanDate(request.dueDate)}
+                    </Text>
+                  )}
+                  {request.status === 'borrowed' && (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        Alert.alert(
+                          'Marcar como devolvido',
+                          `Confirmar que você devolveu "${request.bookTitle}"?`,
+                          [
+                            { text: 'Cancelar', style: 'cancel' },
+                            {
+                              text: 'Marcar devolução',
+                              onPress: () => onRequestReturn(request.id),
+                            },
+                          ]
+                        )
+                      }
+                      style={styles.returnButton}
+                    >
+                      <Text style={styles.returnButtonText}>
+                        Marcar como devolvido
+                      </Text>
+                    </Pressable>
+                  )}
+                  {request.status === 'returnRequested' && (
+                    <Text style={styles.awaitingAdminText}>
+                      Aguardando confirmação do administrador
+                    </Text>
+                  )}
+                </View>
+              );
+            })}
           </View>
         )}
 
@@ -445,6 +527,68 @@ const styles = StyleSheet.create({
     color: '#817D72',
     fontSize: 14,
     lineHeight: 21,
+  },
+  myLoansCard: {
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#F0E9DA',
+    borderRadius: 17,
+    padding: 16,
+    marginBottom: 20,
+  },
+  myLoansTitle: {
+    color: '#29271F',
+    fontSize: 16,
+    fontWeight: '800',
+    marginBottom: 10,
+  },
+  myLoanItem: {
+    borderTopWidth: 1,
+    borderTopColor: '#F0E9DA',
+    paddingTop: 10,
+    marginTop: 10,
+  },
+  myLoanItemOverdue: {
+    borderLeftWidth: 3,
+    borderLeftColor: '#A33A2B',
+    paddingLeft: 10,
+  },
+  myLoanBook: {
+    color: '#454237',
+    fontSize: 13,
+    fontWeight: '800',
+  },
+  myLoanStatus: {
+    color: '#98771D',
+    fontSize: 11,
+    fontWeight: '800',
+    marginTop: 5,
+  },
+  myLoanStatusOverdue: {
+    color: '#A33A2B',
+  },
+  myLoanDate: {
+    color: '#817D72',
+    fontSize: 12,
+    marginTop: 4,
+  },
+  returnButton: {
+    minHeight: 38,
+    borderRadius: 9,
+    backgroundColor: '#29271F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 10,
+  },
+  returnButtonText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  awaitingAdminText: {
+    color: '#817D72',
+    fontSize: 11,
+    marginTop: 8,
   },
   search: {
     height: 52,

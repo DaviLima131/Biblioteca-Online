@@ -14,6 +14,7 @@ import CheckoutScreen from './CheckoutScreen';
 
 import {
   books as initialBooks,
+  createDueDate,
   type Book,
   type CartItem,
   type LoanRequest,
@@ -24,13 +25,22 @@ import {
 import type { AppScreenName, AuthScreenName } from './types';
 
 const DEMO_ADMIN_NAME = 'admin';
+const DEMO_ADMIN_EMAIL = 'admin@biblioteca.com';
 const DEMO_ADMIN_PASSWORD = 'admin123';
 const ACCOUNTS_STORAGE_KEY = 'biblioteca-online-accounts';
+const LOANS_STORAGE_KEY = 'biblioteca-online-loans';
 
 type LocalAccount = {
   name: string;
+  email?: string;
+  address: string;
   password: string;
 };
+
+const normalizeText = (value: string) => value.trim();
+const normalizeName = (value: string) =>
+  normalizeText(value).replace(/\s+/g, ' ');
+const normalizeIdentifier = (value: string) => normalizeText(value).toLowerCase();
 
 const getUniqueLendingLocations = (locations: string[]) => {
   const uniqueLocations = new Map<string, string>();
@@ -93,6 +103,7 @@ export default function App() {
   );
   const [cart, setCart] = useState<CartItem[]>([]);
   const [loanRequests, setLoanRequests] = useState<LoanRequest[]>([]);
+  const [isLoansReady, setIsLoansReady] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
@@ -109,7 +120,28 @@ export default function App() {
         const parsedAccounts = JSON.parse(storedAccounts) as LocalAccount[];
 
         if (Array.isArray(parsedAccounts) && isMounted) {
-          setAccounts(parsedAccounts);
+          const normalizedAccounts = parsedAccounts
+            .filter(
+              (account): account is LocalAccount =>
+                Boolean(account?.name?.trim()) &&
+                typeof account.password === 'string'
+            )
+            .map((account) => ({
+              name: normalizeName(account.name),
+              email: normalizeText(account.email ?? '').toLowerCase(),
+              address: normalizeName(account.address ?? ''),
+              password: account.password,
+            }))
+            .filter((account, index, accounts) => {
+              const name = normalizeIdentifier(account.name);
+              const email = normalizeIdentifier(account.email ?? '');
+              return !accounts.slice(0, index).some((existingAccount) =>
+                normalizeIdentifier(existingAccount.name) === name ||
+                (email && normalizeIdentifier(existingAccount.email ?? '') === email)
+              );
+            });
+
+          setAccounts(normalizedAccounts);
         }
       } catch (error) {
         console.warn('Não foi possível carregar os usuários salvos.', error);
@@ -146,27 +178,95 @@ export default function App() {
     saveAccounts();
   }, [accounts, isAccountsReady]);
 
-  // CADASTRO
-  const handleRegister = (name: string, password: string) => {
-    const normalizedName = name.trim();
+  useEffect(() => {
+    let isMounted = true;
 
-    if (normalizedName.toLowerCase() === DEMO_ADMIN_NAME) {
+    const loadLoans = async () => {
+      try {
+        const storedLoans = await AsyncStorage.getItem(LOANS_STORAGE_KEY);
+        if (!storedLoans || !isMounted) {
+          return;
+        }
+
+        const parsedLoans = JSON.parse(storedLoans) as LoanRequest[];
+        if (Array.isArray(parsedLoans)) {
+          setLoanRequests(parsedLoans);
+        }
+      } catch (error) {
+        console.warn('Não foi possível carregar os empréstimos salvos.', error);
+      } finally {
+        if (isMounted) {
+          setIsLoansReady(true);
+        }
+      }
+    };
+
+    loadLoans();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isLoansReady) {
+      return;
+    }
+
+    const saveLoans = async () => {
+      try {
+        await AsyncStorage.setItem(
+          LOANS_STORAGE_KEY,
+          JSON.stringify(loanRequests)
+        );
+      } catch (error) {
+        console.warn('Não foi possível salvar os empréstimos.', error);
+      }
+    };
+
+    saveLoans();
+  }, [loanRequests, isLoansReady]);
+
+  // CADASTRO
+  const handleRegister = (
+    name: string,
+    email: string,
+    password: string,
+    address: string
+  ) => {
+    const normalizedName = normalizeName(name);
+    const normalizedEmail = normalizeIdentifier(email);
+
+    if (
+      normalizeIdentifier(normalizedName) === DEMO_ADMIN_NAME ||
+      normalizedEmail === DEMO_ADMIN_EMAIL
+    ) {
       Alert.alert(
         'Cadastro não realizado',
-        'Esse nome é reservado para a conta de administrador.'
+        'Esse nome ou e-mail é reservado para a conta de administrador.'
       );
       return;
     }
 
-    const accountExists = accounts.some(
+    const duplicateName = accounts.some(
       (account) =>
-        account.name.toLowerCase() === normalizedName.toLowerCase()
+        normalizeIdentifier(account.name) === normalizeIdentifier(normalizedName)
     );
-
-    if (accountExists) {
+    if (duplicateName) {
       Alert.alert(
-        'Cadastro não realizado',
-        'Esse nome já está cadastrado.'
+        'Nome de usuário indisponível',
+        'Esse nome já está cadastrado. Escolha outro nome para continuar.'
+      );
+      return;
+    }
+
+    const duplicateEmail = accounts.some(
+      (account) =>
+        normalizeIdentifier(account.email ?? '') === normalizedEmail
+    );
+    if (duplicateEmail) {
+      Alert.alert(
+        'E-mail já cadastrado',
+        'Esse e-mail já possui uma conta. Use outro e-mail ou faça login.'
       );
       return;
     }
@@ -175,6 +275,8 @@ export default function App() {
       ...currentAccounts,
       {
         name: normalizedName,
+        email: normalizedEmail,
+        address: normalizeName(address),
         password,
       },
     ]);
@@ -185,11 +287,12 @@ export default function App() {
   };
 
   // LOGIN
-  const handleLogin = (name: string, password: string) => {
-    const normalizedName = name.trim();
+  const handleLogin = (_name: string, email: string, password: string) => {
+    const loginIdentifier = normalizeIdentifier(email);
 
     if (
-      normalizedName.toLowerCase() === DEMO_ADMIN_NAME &&
+      (loginIdentifier === DEMO_ADMIN_EMAIL ||
+        loginIdentifier === DEMO_ADMIN_NAME) &&
       password === DEMO_ADMIN_PASSWORD
     ) {
       setUserName('Administrador');
@@ -198,16 +301,20 @@ export default function App() {
       return;
     }
 
-    const account = accounts.find(
-      (item) =>
-        item.name.toLowerCase() === normalizedName.toLowerCase() &&
+    const account = accounts.find((item) => {
+      const registeredEmail = normalizeIdentifier(item.email ?? '');
+      const username = normalizeIdentifier(item.name);
+
+      return (
+        (registeredEmail === loginIdentifier || username === loginIdentifier) &&
         item.password === password
-    );
+      );
+    });
 
     if (!account) {
       Alert.alert(
         'Não foi possível entrar',
-        'Confira seu nome e senha ou crie uma conta.'
+        'Confira seu e-mail e senha ou crie uma conta.'
       );
       return;
     }
@@ -411,15 +518,28 @@ export default function App() {
             status,
             pickedUpAt: undefined,
             returnedAt: undefined,
+            dueDate: undefined,
           };
         }
 
         if (status === 'borrowed') {
+          const now = new Date();
           return {
             ...request,
             status,
             pickedUpAt: updatedAt,
             returnedAt: undefined,
+            dueDate:
+              request.status === 'returned'
+                ? createDueDate(now)
+                : request.dueDate ?? createDueDate(now),
+          };
+        }
+
+        if (status === 'returnRequested') {
+          return {
+            ...request,
+            status,
           };
         }
 
@@ -427,8 +547,19 @@ export default function App() {
           ...request,
           status,
           returnedAt: updatedAt,
+          dueDate: undefined,
         };
       })
+    );
+  };
+
+  const handleRequestReturn = (loanId: string) => {
+    setLoanRequests((currentRequests) =>
+      currentRequests.map((request) =>
+        request.id === loanId && request.status === 'borrowed'
+          ? { ...request, status: 'returnRequested' }
+          : request
+      )
     );
   };
 
@@ -455,13 +586,19 @@ export default function App() {
         userName={userName}
         catalog={catalog}
         isAdmin={isAdmin}
+        myLoans={loanRequests.filter(
+          (request) => request.borrowerName === userName
+        )}
         cartItemCount={cart.reduce(
           (count, item) => count + item.quantity,
           0
         )}
         loanRequestCount={
-          loanRequests.filter((request) => request.status === 'requested')
-            .length
+          loanRequests.filter(
+            (request) =>
+              request.status === 'requested' ||
+              request.status === 'returnRequested'
+          ).length
         }
         onNavigate={handleNavigate}
         onOpenCart={() => setScreen('cart')}
@@ -474,6 +611,7 @@ export default function App() {
           setScreen('adminBook');
         }}
         onOpenLoans={() => setScreen('adminLoans')}
+        onRequestReturn={handleRequestReturn}
         onDeleteBook={(bookId) => {
           setCatalog((currentCatalog) =>
             currentCatalog.filter((book) => book.id !== bookId)
@@ -491,6 +629,10 @@ export default function App() {
     return (
       <AdminLoansScreen
         loanRequests={loanRequests}
+        customerAddresses={accounts.map(({ name, address }) => ({
+          name,
+          address,
+        }))}
         onBack={() => setScreen('home')}
         onDeleteLoanRequest={(loanId) =>
           setLoanRequests((currentRequests) =>
